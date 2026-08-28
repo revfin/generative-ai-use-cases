@@ -57,6 +57,7 @@ const MAX_SOURCE_LENGTH = 4000;
 
 /** A single retrieval result as returned by the Bedrock Retrieve API. */
 export type RetrievedChunk = {
+  location?: { s3Location?: { uri?: string } };
   content?: { text?: string };
   metadata?: Record<string, unknown>;
 };
@@ -127,7 +128,11 @@ export const toGroundingSources = (
       continue;
     }
 
-    const uri = String(chunk.metadata?.[SOURCE_URI_KEY] ?? '');
+    // S3 Vectors indexes do not surface the source-uri metadata key that
+    // OpenSearch-backed KBs add; the location block carries it there.
+    const uri = String(
+      chunk.metadata?.[SOURCE_URI_KEY] ?? chunk.location?.s3Location?.uri ?? ''
+    );
     const rawPage = chunk.metadata?.[PAGE_NUMBER_KEY];
     const page =
       rawPage === undefined || rawPage === null || rawPage === ''
