@@ -31,7 +31,7 @@ export const createStacks = (app: cdk.App, params: ProcessedStackInput) => {
   if (params.closedNetworkMode) {
     closedNetworkStack = new ClosedNetworkStack(
       app,
-      `ClosedNetworkStack${params.env}`,
+      `MimirClosedNetworkStack${params.env}`,
       {
         env: {
           account: params.account,
@@ -52,7 +52,7 @@ export const createStacks = (app: cdk.App, params: ProcessedStackInput) => {
       params.allowedCountryCodes ||
       params.hostName) &&
     !params.closedNetworkMode
-      ? new CloudFrontWafStack(app, `CloudFrontWafStack${params.env}`, {
+      ? new CloudFrontWafStack(app, `MimirWafStack${params.env}`, {
           env: {
             account: params.account,
             region: 'us-east-1',
@@ -65,7 +65,7 @@ export const createStacks = (app: cdk.App, params: ProcessedStackInput) => {
   // RAG Knowledge Base
   const ragKnowledgeBaseStack =
     params.ragKnowledgeBaseEnabled && !params.ragKnowledgeBaseId
-      ? new RagKnowledgeBaseStack(app, `RagKnowledgeBaseStack${params.env}`, {
+      ? new RagKnowledgeBaseStack(app, `MimirRagStack${params.env}`, {
           env: {
             account: params.account,
             region: params.modelRegion,
@@ -84,7 +84,7 @@ export const createStacks = (app: cdk.App, params: ProcessedStackInput) => {
     }
   }
   const agentStack = params.agentEnabled
-    ? new AgentStack(app, `WebSearchAgentStack${params.env}`, {
+    ? new AgentStack(app, `MimirWebSearchAgentStack${params.env}`, {
         env: {
           account: params.account,
           region: params.modelRegion,
@@ -96,7 +96,7 @@ export const createStacks = (app: cdk.App, params: ProcessedStackInput) => {
 
   // Guardrail
   const guardrailStack = params.guardrailEnabled
-    ? new GuardrailStack(app, `GuardrailStack${params.env}`, {
+    ? new GuardrailStack(app, `MimirGuardrailStack${params.env}`, {
         env: {
           account: params.account,
           region: params.modelRegion,
@@ -108,7 +108,7 @@ export const createStacks = (app: cdk.App, params: ProcessedStackInput) => {
   // Agent Core Runtime (always create if either feature is enabled)
   const agentCoreStack =
     params.createGenericAgentCoreRuntime || params.agentBuilderEnabled
-      ? new AgentCoreStack(app, `AgentCoreStack${params.env}`, {
+      ? new AgentCoreStack(app, `MimirAgentCoreStack${params.env}`, {
           env: {
             account: params.account,
             region: params.agentCoreRegion,
@@ -119,7 +119,7 @@ export const createStacks = (app: cdk.App, params: ProcessedStackInput) => {
 
   // Research Agent Core Runtime
   const researchAgentCoreStack = params.researchAgentEnabled
-    ? new ResearchAgentCoreStack(app, `ResearchAgentCoreStack${params.env}`, {
+    ? new ResearchAgentCoreStack(app, `MimirResearchAgentStack${params.env}`, {
         env: {
           account: params.account,
           region: params.agentCoreRegion,
@@ -153,7 +153,7 @@ export const createStacks = (app: cdk.App, params: ProcessedStackInput) => {
 
   const generativeAiUseCasesStack = new GenerativeAiUseCasesStack(
     app,
-    `GenerativeAiUseCasesStack${params.env}`,
+    `MimirStack${params.env}`,
     {
       env: {
         account: params.account,
@@ -226,21 +226,17 @@ export const createStacks = (app: cdk.App, params: ProcessedStackInput) => {
   );
 
   const dashboardStack = params.dashboard
-    ? new DashboardStack(
-        app,
-        `GenerativeAiUseCasesDashboardStack${params.env}`,
-        {
-          env: {
-            account: params.account,
-            region: params.modelRegion,
-          },
-          params: params,
-          userPool: generativeAiUseCasesStack.userPool,
-          userPoolClient: generativeAiUseCasesStack.userPoolClient,
-          appRegion: params.region,
-          crossRegionReferences: true,
-        }
-      )
+    ? new DashboardStack(app, `MimirDashboardStack${params.env}`, {
+        env: {
+          account: params.account,
+          region: params.modelRegion,
+        },
+        params: params,
+        userPool: generativeAiUseCasesStack.userPool,
+        userPoolClient: generativeAiUseCasesStack.userPoolClient,
+        appRegion: params.region,
+        crossRegionReferences: true,
+      })
     : null;
 
   return {
