@@ -12,7 +12,6 @@ import { PiCheck, PiPencilLine, PiTrash, PiX } from 'react-icons/pi';
 import ButtonIcon from './ButtonIcon';
 import { Chat } from 'generative-ai-use-cases';
 import { decomposeId } from '../utils/ChatUtils';
-import { getUseCaseIcon } from '../utils/UseCaseIconMap';
 import DialogConfirmDeleteChat from './DialogConfirmDeleteChat';
 
 type Props = BaseProps & {
@@ -22,6 +21,7 @@ type Props = BaseProps & {
   onDelete: (chatId: string) => Promise<any>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onUpdateTitle: (chatId: string, title: string) => Promise<any>;
+  onNavigate?: () => void;
   highlightWords: string[];
 };
 
@@ -83,7 +83,7 @@ const ChatListItem: React.FC<Props> = (props) => {
     return text.split(regex).map((part, i) => {
       if (words.some((word) => part.toLowerCase() === word.toLowerCase())) {
         return (
-          <span key={i} className="text-aws-smile">
+          <span key={i} className="text-aws-smile font-medium">
             {part}
           </span>
         );
@@ -108,46 +108,43 @@ const ChatListItem: React.FC<Props> = (props) => {
         />
       )}
       <Link
-        className={`hover:bg-aws-sky group flex h-8 w-full items-center justify-start rounded p-2  ${
-          props.active && 'bg-aws-sky'
-        }
-          ${props.className}`}
-        to={`/chat/${chatId}`}>
-        <div
-          className={`flex h-8 max-h-5 w-full justify-start overflow-hidden`}>
-          <div className="mr-2 ">{getUseCaseIcon(props.chat.usecase)}</div>
-          <div className="relative flex-1 text-ellipsis break-all">
+        className={`group flex h-9 w-full items-center justify-start rounded-lg px-2 text-[13px] ${
+          props.active
+            ? 'text-aws-squid-ink bg-[#FFF7F2] font-medium'
+            : 'hover:bg-[#F7F7F7]'
+        } ${props.className ?? ''}`}
+        to={`/chat/${chatId}`}
+        onClick={props.onNavigate}>
+        <div className="flex w-full items-center justify-start overflow-hidden">
+          <div className="relative flex-1 truncate">
             {editing ? (
               <input
                 ref={inputRef}
                 type="text"
-                className="max-h-5 w-full bg-transparent p-0 text-sm ring-0"
+                className="max-h-5 w-full bg-transparent p-0 text-[13px] ring-0"
                 value={tempTitle}
                 onChange={(e) => {
                   setTempTitle(e.target.value);
                 }}
               />
             ) : (
-              <div>{highlightText(props.chat.title, props.highlightWords)}</div>
-            )}
-            {!editing && (
-              <div
-                className={`group-hover:from-aws-sky group-hover:to-aws-sky/40 absolute right-0 w-8 bg-gradient-to-l
-            ${props.active ? 'from-aws-sky' : 'from-aws-squid-ink'}
-            `}
-              />
+              <div className="truncate">
+                {highlightText(props.chat.title, props.highlightWords)}
+              </div>
             )}
           </div>
-          <div className="flex">
+          <div className="flex text-[#969696]">
             {props.active && !editing && (
               <>
                 <ButtonIcon
+                  className="text-base"
                   onClick={() => {
                     setEditing(true);
                   }}>
                   <PiPencilLine />
                 </ButtonIcon>
                 <ButtonIcon
+                  className="text-base"
                   onClick={() => {
                     setOpenDialog(true);
                   }}>

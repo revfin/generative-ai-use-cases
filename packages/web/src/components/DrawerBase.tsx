@@ -2,9 +2,7 @@ import React, { ReactNode, useMemo } from 'react';
 import { BaseProps } from '../@types/common';
 import { Link } from 'react-router-dom';
 import useSWR from 'swr';
-import useVersion from '../hooks/useVersion';
-import IconWithDot from './IconWithDot';
-import { PiChartBar, PiGear } from 'react-icons/pi';
+import { PiGear } from 'react-icons/pi';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import useUserSetting from '../hooks/useUserSetting';
 import { useTranslation } from 'react-i18next';
@@ -15,7 +13,6 @@ type Props = BaseProps & {
 };
 
 const DrawerBase: React.FC<Props> = (props) => {
-  const { getHasUpdate } = useVersion();
   const { settingShowEmail } = useUserSetting();
   const { t } = useTranslation();
 
@@ -28,35 +25,29 @@ const DrawerBase: React.FC<Props> = (props) => {
     return (data?.tokens?.idToken?.payload.email ?? '') as string;
   }, [data]);
 
-  const hasUpdate = getHasUpdate();
-
   const settingUrl = useMemo(() => {
-    return props.builderMode ? `/use-case-builder/setting` : 'setting';
+    return props.builderMode ? `/use-case-builder/setting` : '/setting';
   }, [props.builderMode]);
 
   return (
-    <>
-      <nav
-        className={`bg-aws-squid-ink flex h-screen w-64 flex-col justify-between text-sm text-white  print:hidden`}>
-        <div className="flex h-full flex-col">
-          {props.children}
-          <div className="flex flex-none items-center justify-between gap-x-2 border-t border-gray-400 px-3 py-2">
-            {settingShowEmail && (
-              <div className="truncate text-xs">{email}</div>
-            )}
-            <div className="grow" />
-            <Link to="/stats" title={t('stat.title')}>
-              <PiChartBar className="text-lg" />
-            </Link>
-            <Link to={settingUrl}>
-              <IconWithDot showDot={hasUpdate}>
-                <PiGear className="text-lg" />
-              </IconWithDot>
-            </Link>
-          </div>
+    <nav className="text-aws-font-color flex h-screen w-72 flex-col justify-between border-r border-[#EFEFEF] bg-white text-sm print:hidden">
+      <div className="flex h-full flex-col overflow-hidden">
+        {props.children}
+        <div className="flex flex-none flex-col gap-1 border-t border-[#EFEFEF] px-3 py-3">
+          {settingShowEmail && email && (
+            <div className="truncate px-2 text-[11px] text-[#969696]">
+              {email}
+            </div>
+          )}
+          <Link
+            className="flex h-8 items-center gap-2 rounded-lg px-2 text-[13px] hover:bg-[#F7F7F7]"
+            to={settingUrl}>
+            <PiGear className="text-base text-[#969696]" />
+            {t('navigation.settings')}
+          </Link>
         </div>
-      </nav>
-    </>
+      </div>
+    </nav>
   );
 };
 

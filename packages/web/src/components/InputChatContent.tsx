@@ -43,6 +43,8 @@ type Props = {
   reasoning?: boolean;
   onReasoningSwitched?: () => void;
   reasoningEnabled?: boolean;
+  // Quiet controls rendered next to the attachment button (model selector etc.)
+  toolbar?: React.ReactNode;
 } & (
   | {
       hideReset?: false;
@@ -121,22 +123,19 @@ const InputChatContent: React.FC<Props> = (props) => {
   }, [props.content, props.disabled, uploading, errorMessages, loading]);
 
   return (
-    <div
-      className={`${
-        props.fullWidth ? 'w-full' : 'w-11/12 md:w-10/12 lg:w-4/6 xl:w-3/6'
-      }`}>
+    <div className={`${props.fullWidth ? 'w-full' : 'w-full max-w-3xl px-4'}`}>
       {props.description && (
         <p className="m-2 whitespace-pre-wrap text-xs text-gray-500">
           {props.description}
         </p>
       )}
       <div
-        className={`relative flex flex-col rounded-xl border border-black/10 bg-gray-100 shadow-[0_0_30px_1px] shadow-gray-400/40 ${
+        className={`focus-within:border-aws-squid-ink/30 relative flex flex-col rounded-2xl border border-[#E8E8E8] bg-white transition-colors ${
           props.disableMarginBottom
             ? ''
             : settingSubmitCmdOrCtrlEnter
               ? 'mb-2'
-              : 'mb-7'
+              : 'mb-6'
         }`}>
         <div className="flex grow flex-col">
           {props.fileUpload && uploadedFiles.length > 0 && (
@@ -198,7 +197,7 @@ const InputChatContent: React.FC<Props> = (props) => {
             </div>
           )}
           <Textarea
-            className={`scrollbar-thumb-gray-200 scrollbar-thin -mr-14 bg-transparent p-4`}
+            className={`scrollbar-thumb-gray-200 scrollbar-thin bg-transparent px-4 pb-1 pt-3.5 text-[15px] placeholder:text-[#969696]`}
             placeholder={props.placeholder ?? t('common.enter_text')}
             noBorder
             notItem
@@ -208,8 +207,8 @@ const InputChatContent: React.FC<Props> = (props) => {
             onEnter={disabledSend ? undefined : props.onSend}
           />
         </div>
-        <div className="m-2 flex justify-between gap-1">
-          <div className="flex gap-x-1">
+        <div className="m-2 flex items-center justify-between gap-1">
+          <div className="flex min-w-0 items-center gap-x-1">
             {props.fileUpload && (
               <Tooltip
                 message={t('inputs.attachment')}
@@ -227,7 +226,7 @@ const InputChatContent: React.FC<Props> = (props) => {
                       value={[]}
                     />
                     <div
-                      className={`${uploading ? 'bg-gray-300' : 'cursor-pointer bg-white '} ${uploadedFiles.length > 0 ? 'text-aws-smile border-aws-smile' : 'border-gray-400 text-gray-400'} flex items-center justify-center rounded-xl border p-2 align-bottom text-xl`}>
+                      className={`${uploading ? 'text-[#969696]' : 'cursor-pointer hover:bg-[#F7F7F7]'} ${uploadedFiles.length > 0 ? 'text-aws-smile' : 'text-[#969696]'} flex size-8 items-center justify-center rounded-lg align-bottom text-lg`}>
                       {uploading ? (
                         <PiSpinnerGap className="animate-spin" />
                       ) : (
@@ -238,6 +237,7 @@ const InputChatContent: React.FC<Props> = (props) => {
                 </div>
               </Tooltip>
             )}
+            {props.toolbar}
             {props.reasoning && (
               <Tooltip
                 message={t('inputs.reasoning')}
@@ -261,7 +261,7 @@ const InputChatContent: React.FC<Props> = (props) => {
                 nowrap>
                 <ButtonIcon
                   onClick={props.onSetting ?? (() => {})}
-                  className="text-gray-500">
+                  className="text-lg text-[#969696]">
                   <PiSlidersHorizontal />
                 </ButtonIcon>
               </Tooltip>
@@ -293,7 +293,7 @@ const InputChatContent: React.FC<Props> = (props) => {
 
       {/* Show keyboard shortcut hint when cmd/ctrl+enter setting is enabled */}
       {settingSubmitCmdOrCtrlEnter && (
-        <div className="mb-2 text-right text-xs text-gray-500">
+        <div className="mb-4 mt-1 text-right text-[11px] text-[#969696]">
           {navigator.platform.toLowerCase().includes('mac')
             ? t('chat.hint_cmd_enter')
             : t('chat.hint_ctrl_enter')}

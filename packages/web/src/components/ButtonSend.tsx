@@ -19,8 +19,10 @@ const ButtonSend: React.FC<Props> = (props) => {
     <button
       className={`${
         props.className ?? ''
-      } flex items-center justify-center rounded-xl p-2 text-xl text-white ${
-        props.disabled ? 'bg-gray-300' : 'bg-aws-smile'
+      } flex size-9 items-center justify-center rounded-lg text-base text-white transition-colors ${
+        props.disabled
+          ? 'bg-[#E8E8E8] text-[#969696]'
+          : 'bg-aws-squid-ink hover:bg-aws-anchor'
       }`}
       onClick={props.onClick}
       disabled={props.disabled}>

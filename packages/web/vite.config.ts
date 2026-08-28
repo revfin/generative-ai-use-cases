@@ -11,11 +11,6 @@ import webfontDownload from 'vite-plugin-webfont-dl';
 export default defineConfig(({ mode }) => ({
   build: {
     rollupOptions: {
-      output: {
-        manualChunks: {
-          echarts: ['echarts'],
-        },
-      },
       plugins: [
         mode === 'analyze' &&
           visualizer({
@@ -53,35 +48,23 @@ export default defineConfig(({ mode }) => ({
         maximumFileSizeToCacheInBytes: 5000000,
       },
       manifest: {
-        name: 'Generative AI Use Cases',
-        short_name: 'GenU',
-        description:
-          'Application Implementation of Business Use Cases Utilizing Generative AI',
-        start_url: '/',
+        name: 'Mimir',
+        short_name: 'Mimir',
+        description: 'Chat with your documents',
+        start_url: '/chat',
         display: 'minimal-ui',
-        theme_color: '#232F3E',
+        theme_color: '#1C256C',
         background_color: '#FFFFFF',
         icons: [
           {
-            src: '/images/aws_icon_192.png',
+            src: '/favicon.png',
             sizes: '192x192',
             type: 'image/png',
           },
           {
-            src: '/images/aws_icon_192_maskable.png',
-            sizes: '192x192',
-            type: 'image/png',
-            purpose: 'maskable',
-          },
-          {
-            src: '/images/aws_icon_512.png',
-            sizes: '512x512',
-            type: 'image/png',
-          },
-          {
-            src: '/images/aws_icon_512_maskable.png',
-            sizes: '512x512',
-            type: 'image/png',
+            src: '/images/mimir-logo.svg',
+            sizes: 'any',
+            type: 'image/svg+xml',
             purpose: 'maskable',
           },
         ],

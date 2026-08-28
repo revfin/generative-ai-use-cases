@@ -9,6 +9,59 @@
   ) !important;
 }
 
+/* Citations: the knowledge base answers land as markdown footnotes, so the
+   footnote block is styled as a compact source list rather than prose. */
+.prose .footnotes {
+  margin-top: 1.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #efefef;
+  font-size: 13px;
+  color: #5a5a5a;
+}
+
+.prose .footnotes h2 {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #969696;
+  margin: 0 0 0.5rem;
+}
+
+.prose .footnotes ol {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.prose .footnotes li {
+  margin: 0.125rem 0;
+}
+
+.prose .footnotes li p {
+  margin: 0;
+}
+
+.prose .footnotes a {
+  color: #1c256c;
+  text-decoration: none;
+}
+
+.prose .footnotes a:hover {
+  text-decoration: underline;
+}
+
+/* Honour the OS "reduce motion" preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Remove the spinner for <input type="number"> */
 /* Chrome, Safari, Edge, Opera */
 input::-webkit-outer-spin-button,

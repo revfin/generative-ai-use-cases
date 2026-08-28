@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 
 type Props = BaseProps & {
   searchWords: string[];
+  onNavigate?: () => void;
 };
 
 const ChatList: React.FC<Props> = (props) => {
@@ -58,11 +59,11 @@ const ChatList: React.FC<Props> = (props) => {
           return (
             <ChatListItem
               key={_chatId}
-              className={`${props.className && ''}`}
               active={chatId === _chatId}
               chat={chat}
               onDelete={onDelete}
               onUpdateTitle={onUpdateTitle}
+              onNavigate={props.onNavigate}
               highlightWords={props.searchWords}
             />
           );
@@ -70,7 +71,7 @@ const ChatList: React.FC<Props> = (props) => {
         {canLoadMore && !loading && (
           <div className="my-2 flex w-full justify-center">
             <button
-              className="hover:underline"
+              className="rounded-lg px-2 py-1 text-[13px] text-[#969696] hover:bg-[#F7F7F7]"
               onClick={() => {
                 loadMore();
               }}>
@@ -84,7 +85,7 @@ const ChatList: React.FC<Props> = (props) => {
             .map((_, idx) => (
               <div
                 key={idx}
-                className="bg-aws-sky/20 my-1 h-6 w-full animate-pulse rounded"></div>
+                className="my-1 h-6 w-full animate-pulse rounded bg-[#F2F2F2]"></div>
             ))}
       </div>
     </>

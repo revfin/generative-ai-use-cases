@@ -1,4 +1,11 @@
-import React, { useEffect, useMemo, useState, memo } from 'react';
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+  memo,
+  lazy,
+  Suspense,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { BaseProps } from '../@types/common';
 import { default as ReactMarkdown } from 'react-markdown';
@@ -41,9 +48,24 @@ import xmlDoc from 'react-syntax-highlighter/dist/esm/languages/prism/xml-doc';
 import yaml from 'react-syntax-highlighter/dist/esm/languages/prism/yaml';
 import { useLocation } from 'react-router-dom';
 
-import { MermaidWithToggle } from './Mermaid/MermaidWithToggle';
 import { SvgWithToggle } from './Svg/SvgWithToggle';
-import { EChartsWithToggle } from './ECharts/EChartsWithToggle';
+
+// Mermaid and ECharts are heavy renderers that only a small share of answers
+// use, so they are pulled in on demand instead of on first paint
+const MermaidWithToggle = lazy(() =>
+  import('./Mermaid/MermaidWithToggle').then((m) => ({
+    default: m.MermaidWithToggle,
+  }))
+);
+const EChartsWithToggle = lazy(() =>
+  import('./ECharts/EChartsWithToggle').then((m) => ({
+    default: m.EChartsWithToggle,
+  }))
+);
+
+const RendererFallback = () => (
+  <div className="my-4 h-24 animate-pulse rounded-lg bg-[#F7F7F7]" />
+);
 
 SyntaxHighlighter.registerLanguage('bash', bash);
 SyntaxHighlighter.registerLanguage('c', c);
@@ -71,6 +93,9 @@ SyntaxHighlighter.registerLanguage('yaml', yaml);
 // Re-export MermaidWithToggle for backward compatibility
 export { MermaidWithToggle };
 
+const ragKnowledgeBaseEnabled: boolean =
+  import.meta.env.VITE_APP_RAG_KNOWLEDGE_BASE_ENABLED === 'true';
+
 type Props = BaseProps & {
   children: string;
   prefix?: string;
@@ -88,10 +113,15 @@ const LinkRenderer = ({
   }, [isS3Url, href]);
 
   // For Knowledge Base, we pass s3Type as a parameter
-  // since it may need to reference S3 from a different account
+  // since it may need to reference S3 from a different account.
+  // Retrieval now happens inside the main chat, so every S3 citation in this
+  // app comes from the knowledge base when it is enabled.
   const location = useLocation();
   const isKnowledgeBase = useMemo(() => {
-    return location.pathname.includes('/rag-knowledge-base');
+    return (
+      ragKnowledgeBaseEnabled ||
+      location.pathname.includes('/rag-knowledge-base')
+    );
   }, [location.pathname]);
 
   return (
@@ -177,6 +207,12 @@ const PreRenderer = ({
       return <>{children}</>;
     }
 
+    // Skip <pre> tag for highlighted code blocks: CodeRenderer draws its own
+    // panel (hairline border + language bar) around the highlighter
+    if (className.includes('language-')) {
+      return <>{children}</>;
+    }
+
     // Skip <pre> tag for SVG (when language is svg, or xml/html with SVG content)
     if (
       className.includes('language-svg') ||
@@ -210,7 +246,11 @@ const CodeRenderer = memo(
     // Render Mermaid diagrams with toggle
     // Use not-prose to prevent prose styles from affecting the diagram container
     if (language === 'mermaid') {
-      return <MermaidWithToggle code={codeText} />;
+      return (
+        <Suspense fallback={<RendererFallback />}>
+          <MermaidWithToggle code={codeText} />
+        </Suspense>
+      );
     }
 
     // Render SVG code with toggle (when language is svg, xml, or html and content is SVG)
@@ -223,27 +263,37 @@ const CodeRenderer = memo(
 
     // Render ECharts charts with toggle
     if (language === 'chart') {
-      return <EChartsWithToggle code={codeText} />;
+      return (
+        <Suspense fallback={<RendererFallback />}>
+          <EChartsWithToggle code={codeText} />
+        </Suspense>
+      );
     }
 
     return (
       <>
         {language ? (
           // Code block with language
-          <>
-            <div className="flex">
-              <span className="flex-auto">{language}</span>
+          <div className="not-prose my-4 overflow-hidden rounded-lg border border-[#E8E8E8]">
+            <div className="flex items-center justify-between border-b border-[#E8E8E8] bg-[#F7F7F7] px-3 py-1">
+              <span className="text-[11px] text-[#5A5A5A]">{language}</span>
               <ButtonCopy
-                className="mr-2 justify-end text-gray-400"
+                className="text-base text-[#969696]"
                 text={codeText}
               />
             </div>
             <SyntaxHighlighter
               style={vscDarkPlus}
+              customStyle={{
+                margin: 0,
+                borderRadius: 0,
+                fontSize: '13px',
+                padding: '0.875rem 1rem',
+              }}
               language={language || 'plaintext'}>
               {codeText}
             </SyntaxHighlighter>
-          </>
+          </div>
         ) : isCodeBlock ? (
           // Code block without language
           <code className="block rounded-md py-1">
@@ -255,7 +305,7 @@ const CodeRenderer = memo(
           </code>
         ) : (
           // Inline code
-          <span className="bg-aws-squid-ink/10 border-aws-squid-ink/30 inline rounded-md border px-1 py-0.5">
+          <span className="text-aws-squid-ink inline rounded border border-[#E8E8E8] bg-[#F7F7F7] px-1 py-0.5 text-[0.9em]">
             {codeText}
           </span>
         )}
@@ -274,7 +324,7 @@ const CodeRenderer = memo(
 const Markdown = memo(({ className, prefix, children }: Props) => {
   return (
     <ReactMarkdown
-      className={`${className ?? ''} prose max-w-full`}
+      className={`${className ?? ''} prose prose-neutral text-aws-font-color max-w-full text-[15px] leading-relaxed`}
       children={children}
       remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]}
       rehypePlugins={[rehypeKatex]}
@@ -283,7 +333,9 @@ const Markdown = memo(({ className, prefix, children }: Props) => {
         a: LinkRenderer,
         img: ImageRenderer,
         sup: ({ children }) => (
-          <sup className="m-0.5 rounded-full bg-gray-200 px-1">{children}</sup>
+          <sup className="text-aws-squid-ink mx-0.5 rounded bg-[#1C256C]/[0.07] px-1.5 py-0.5 text-[11px] font-medium no-underline">
+            {children}
+          </sup>
         ),
         pre: PreRenderer,
         code: CodeRenderer,

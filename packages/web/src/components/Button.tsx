@@ -19,9 +19,9 @@ const Button = React.forwardRef<HTMLButtonElement, Props>((props, ref) => {
       className={`${props.className ?? ''} ${
         props.outlined
           ? 'text-aws-font-color border-aws-font-color/20 border bg-white'
-          : 'bg-aws-smile border text-white'
+          : 'bg-aws-squid-ink border-aws-squid-ink border text-white'
       }
-      flex items-center justify-center rounded-lg p-1 px-3 ${
+      flex items-center justify-center rounded-lg p-1 px-3 text-sm ${
         props.disabled || props.loading ? 'opacity-30' : 'hover:brightness-75'
       }`}
       title={props.title}

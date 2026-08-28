@@ -9,22 +9,17 @@ import { useLocation, useParams } from 'react-router-dom';
 import InputChatContent from '../components/InputChatContent';
 import useChat from '../hooks/useChat';
 import useChatApi from '../hooks/useChatApi';
-import useSystemContextApi from '../hooks/useSystemContextApi';
 import useChatList from '../hooks/useChatList';
 import ChatMessage from '../components/ChatMessage';
-import PromptList from '../components/PromptList';
 import Button from '../components/Button';
 import ButtonCopy from '../components/ButtonCopy';
 import ModalDialog from '../components/ModalDialog';
-import ModalSystemContext from '../components/ModalSystemContext';
-import ExpandableField from '../components/ExpandableField';
-import Switch from '../components/Switch';
 import Select from '../components/Select';
 import ScrollTopBottom from '../components/ScrollTopBottom';
 import useFollow from '../hooks/useFollow';
-import { PiArrowClockwiseBold, PiShareFatFill } from 'react-icons/pi';
+import { PiBooks, PiShareFat } from 'react-icons/pi';
 import { create } from 'zustand';
-import BedrockIcon from '../assets/bedrock.svg?react';
+import useBranding from '../hooks/useBranding';
 import { ChatPageQueryParams } from '../@types/navigate';
 import { MODELS } from '../hooks/useModel';
 import { getPrompter } from '../prompts';
@@ -33,7 +28,6 @@ import useFiles from '../hooks/useFiles';
 import {
   AdditionalModelRequestFields,
   FileLimit,
-  SystemContext,
 } from 'generative-ai-use-cases';
 import ModelParameters from '../components/ModelParameters';
 import { AcceptedDotExtensions } from '../utils/MediaUtils';
@@ -53,41 +47,43 @@ const fileLimit: FileLimit = {
   maxVideoFileSizeMB: 1000, // 1 GB for S3 input
 };
 
+// Knowledge Base retrieval is the default behaviour of the chat when the
+// stack was deployed with a knowledge base. RetrieveAndGenerate can only use
+// models deployed in the model region, so without one there is nothing to
+// answer with.
+const knowledgeBaseAvailable: boolean =
+  import.meta.env.VITE_APP_RAG_KNOWLEDGE_BASE_ENABLED === 'true' &&
+  MODELS.modelIdsInModelRegion.length > 0;
+
 type StateType = {
   content: string;
-  inputSystemContext: string;
-  saveSystemContext: string;
-  saveSystemContextTitle: string;
+  sessionId: string | undefined;
+  useKnowledgeBase: boolean;
   setContent: (c: string) => void;
-  setInputSystemContext: (c: string) => void;
-  setSaveSystemContext: (c: string) => void;
-  setSaveSystemContextTitle: (c: string) => void;
+  setSessionId: (c: string | undefined) => void;
+  setUseKnowledgeBase: (b: boolean) => void;
 };
 
 const useChatPageState = create<StateType>((set) => {
   return {
     content: '',
-    inputSystemContext: '',
-    saveSystemContext: '',
-    saveSystemContextTitle: '',
+    // RetrieveAndGenerate owns the session, so it starts empty and is filled
+    // from the streaming response
+    sessionId: undefined,
+    useKnowledgeBase: knowledgeBaseAvailable,
     setContent: (s: string) => {
       set(() => ({
         content: s,
       }));
     },
-    setInputSystemContext: (s: string) => {
+    setSessionId: (s: string | undefined) => {
       set(() => ({
-        inputSystemContext: s,
+        sessionId: s,
       }));
     },
-    setSaveSystemContext: (s: string) => {
+    setUseKnowledgeBase: (b: boolean) => {
       set(() => ({
-        saveSystemContext: s,
-      }));
-    },
-    setSaveSystemContextTitle: (s: string) => {
-      set(() => ({
-        saveSystemContextTitle: s,
+        useKnowledgeBase: b,
       }));
     },
   };
@@ -98,15 +94,13 @@ const DEFAULT_REASONING_BUDGET = 4096; // Claude 3.7 Sonnet recommended minimum 
 const ChatPage: React.FC = () => {
   const {
     content,
-    inputSystemContext,
-    saveSystemContext,
-    saveSystemContextTitle,
+    sessionId,
+    useKnowledgeBase,
     setContent,
-    setInputSystemContext,
-    setSaveSystemContext,
-    setSaveSystemContextTitle,
+    setSessionId,
+    setUseKnowledgeBase,
   } = useChatPageState();
-  const { pathname, search } = useLocation();
+  const { pathname, search, state } = useLocation();
   const {
     clear: clearFiles,
     uploadedFiles,
@@ -114,16 +108,8 @@ const ChatPage: React.FC = () => {
     base64Cache,
   } = useFiles(pathname);
   const { chatId } = useParams();
-
-  const { listSystemContexts, deleteSystemContext, updateSystemContextTitle } =
-    useSystemContextApi();
-  const [systemContextList, setSystemContextList] = useState<SystemContext[]>(
-    []
-  );
-  const { data: systemContextResponse, mutate } = listSystemContexts();
-  useEffect(() => {
-    setSystemContextList(systemContextResponse ? systemContextResponse : []);
-  }, [systemContextResponse, setSystemContextList]);
+  const { t } = useTranslation();
+  const { logoPath } = useBranding();
 
   const {
     getModelId,
@@ -133,21 +119,17 @@ const ChatPage: React.FC = () => {
     loadingMessages,
     isEmpty,
     messages,
-    rawMessages,
     clear,
     postChat,
     editChat,
-    updateSystemContext,
     updateSystemContextByModel,
-    getCurrentSystemContext,
     retryGeneration,
     forceToStop,
   } = useChat(pathname, chatId);
   const { createShareId, findShareId, deleteShareId } = useChatApi();
-  const { createSystemContext } = useSystemContextApi();
   const { scrollableContainer, setFollowing } = useFollow();
   const { getChatTitle } = useChatList();
-  const { allModelIds: availableModels, modelDisplayName } = MODELS;
+  const { modelDisplayName } = MODELS;
   const { data: share, mutate: reloadShare } = findShareId(chatId);
   const modelId = getModelId();
   const prompter = useMemo(() => {
@@ -161,10 +143,11 @@ const ChatPage: React.FC = () => {
       },
     });
   const [showSetting, setShowSetting] = useState(false);
-  const { t } = useTranslation();
-  const [forceExpandPromptList, setForceExpandPromptList] = useState<
-    number | null
-  >(null);
+
+  // Knowledge Base answers are generated in the model region only
+  const availableModels = useMemo(() => {
+    return useKnowledgeBase ? MODELS.modelIdsInModelRegion : MODELS.allModelIds;
+  }, [useKnowledgeBase]);
 
   useEffect(() => {
     // On the conversation history page, do not change the system prompt even if the model is changed
@@ -178,7 +161,7 @@ const ChatPage: React.FC = () => {
     if (chatId) {
       return getChatTitle(chatId) || t('chat.title');
     } else {
-      return t('chat.title');
+      return t('chat.new_chat');
     }
   }, [chatId, getChatTitle, t]);
 
@@ -192,11 +175,16 @@ const ChatPage: React.FC = () => {
     ];
   }, [modelId]);
   const fileUpload = useMemo(() => {
-    return accept.length > 0;
-  }, [accept]);
+    // RetrieveAndGenerate only takes the question text, so attachments are
+    // offered on the direct-model path only
+    return accept.length > 0 && !useKnowledgeBase;
+  }, [accept, useKnowledgeBase]);
   const reasoning = useMemo(() => {
-    return MODELS.getModelMetadata(modelId).flags.reasoning ?? false;
-  }, [modelId]);
+    return (
+      !useKnowledgeBase &&
+      (MODELS.getModelMetadata(modelId).flags.reasoning ?? false)
+    );
+  }, [modelId, useKnowledgeBase]);
   const adaptiveThinking = useMemo(() => {
     return MODELS.getModelMetadata(modelId).flags.adaptiveThinking ?? false;
   }, [modelId]);
@@ -262,12 +250,6 @@ const ChatPage: React.FC = () => {
 
     if (search !== '') {
       const params = queryString.parse(search) as ChatPageQueryParams;
-      if (params.systemContext && params.systemContext !== '') {
-        updateSystemContext(params.systemContext);
-      } else {
-        clear();
-        setInputSystemContext(currentSystemContext);
-      }
       setContent(params.content ?? '');
       setModelId(
         availableModels.includes(params.modelId ?? '')
@@ -280,6 +262,32 @@ const ChatPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, setContent, availableModels, pathname]);
 
+  // Keep the selection valid when the answer source changes the model list
+  useEffect(() => {
+    if (modelId && !availableModels.includes(modelId)) {
+      setModelId(availableModels[0]);
+      setSessionId(undefined);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availableModels, modelId]);
+
+  // "New chat" in the sidebar lands here with a marker in the history state
+  useEffect(() => {
+    if ((state as { newChat?: number } | null)?.newChat) {
+      clear();
+      setContent('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
+
+  // A cleared conversation (e.g. "New chat") must not reuse the previous
+  // knowledge base session
+  useEffect(() => {
+    if (isEmpty && sessionId) {
+      setSessionId(undefined);
+    }
+  }, [isEmpty, sessionId, setSessionId]);
+
   const onSend = useCallback(async () => {
     setFollowing(true);
     const savedContent = content;
@@ -290,13 +298,13 @@ const ChatPage: React.FC = () => {
       false,
       undefined,
       undefined,
-      undefined,
+      useKnowledgeBase ? sessionId : undefined,
       fileUpload ? uploadedFiles : undefined,
       undefined,
-      undefined,
-      undefined,
+      useKnowledgeBase ? 'bedrockKb' : undefined,
+      setSessionId,
       base64Cache,
-      overrideModelParameters
+      useKnowledgeBase ? undefined : overrideModelParameters
     );
     if (!success) {
       setContent(savedContent);
@@ -309,6 +317,8 @@ const ChatPage: React.FC = () => {
     setFollowing,
     overrideModelParameters,
     uploadedFiles,
+    useKnowledgeBase,
+    sessionId,
   ]);
 
   const onRetry = useCallback(() => {
@@ -316,20 +326,22 @@ const ChatPage: React.FC = () => {
       undefined,
       undefined,
       undefined,
+      useKnowledgeBase ? sessionId : undefined,
       undefined,
       undefined,
-      undefined,
-      undefined,
-      undefined,
+      useKnowledgeBase ? 'bedrockKb' : undefined,
+      setSessionId,
       base64Cache,
-      overrideModelParameters
+      useKnowledgeBase ? undefined : overrideModelParameters
     );
-  }, [retryGeneration, base64Cache, overrideModelParameters]);
-
-  const onReset = useCallback(() => {
-    clear();
-    setContent('');
-  }, [clear, setContent]);
+  }, [
+    retryGeneration,
+    base64Cache,
+    overrideModelParameters,
+    useKnowledgeBase,
+    sessionId,
+    setSessionId,
+  ]);
 
   const onStop = useCallback(() => {
     forceToStop();
@@ -343,22 +355,35 @@ const ChatPage: React.FC = () => {
         false,
         undefined,
         undefined,
+        useKnowledgeBase ? sessionId : undefined,
         undefined,
         undefined,
-        undefined,
-        undefined,
-        undefined,
+        useKnowledgeBase ? 'bedrockKb' : undefined,
+        setSessionId,
         base64Cache,
-        overrideModelParameters
+        useKnowledgeBase ? undefined : overrideModelParameters
       );
     },
-    [editChat, base64Cache, setFollowing, overrideModelParameters]
+    [
+      editChat,
+      base64Cache,
+      setFollowing,
+      overrideModelParameters,
+      useKnowledgeBase,
+      sessionId,
+      setSessionId,
+    ]
   );
+
+  const onSwitchKnowledgeBase = useCallback(() => {
+    setUseKnowledgeBase(!useKnowledgeBase);
+    setSessionId(undefined);
+    clearFiles();
+  }, [useKnowledgeBase, setUseKnowledgeBase, setSessionId, clearFiles]);
 
   const [creatingShareId, setCreatingShareId] = useState(false);
   const [deletingShareId, setDeletingShareId] = useState(false);
   const [showShareIdModal, setShowShareIdModal] = useState(false);
-  const [showSystemContextModal, setShowSystemContextModal] = useState(false);
   const [isOver, setIsOver] = useState(false);
 
   const onCreateShareId = useCallback(async () => {
@@ -373,29 +398,6 @@ const ChatPage: React.FC = () => {
     }
   }, [chatId, createShareId, reloadShare]);
 
-  const onCreateSystemContext = useCallback(async () => {
-    try {
-      await createSystemContext(saveSystemContextTitle, saveSystemContext);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setShowSystemContextModal(false);
-      setInputSystemContext(saveSystemContext);
-      setSaveSystemContextTitle('');
-      mutate();
-      setSystemContextList(systemContextResponse ?? []);
-    }
-  }, [
-    saveSystemContextTitle,
-    saveSystemContext,
-    systemContextResponse,
-    createSystemContext,
-    setShowSystemContextModal,
-    setInputSystemContext,
-    setSaveSystemContextTitle,
-    mutate,
-    setSystemContextList,
-  ]);
   const onDeleteShareId = useCallback(async () => {
     try {
       setDeletingShareId(true);
@@ -415,97 +417,6 @@ const ChatPage: React.FC = () => {
       return null;
     }
   }, [share]);
-
-  const [showSystemContext, setShowSystemContext] = useState(false);
-
-  const showingMessages = useMemo(() => {
-    if (showSystemContext) {
-      return rawMessages;
-    } else {
-      return messages;
-    }
-  }, [showSystemContext, rawMessages, messages]);
-
-  const currentSystemContext = useMemo(() => {
-    return getCurrentSystemContext();
-  }, [getCurrentSystemContext]);
-
-  useEffect(() => {
-    setInputSystemContext(currentSystemContext);
-  }, [currentSystemContext, setInputSystemContext]);
-
-  const onClickSamplePrompt = useCallback(
-    (params: ChatPageQueryParams) => {
-      setContent(params.content ?? '');
-      updateSystemContext(params.systemContext ?? '');
-    },
-    [setContent, updateSystemContext]
-  );
-
-  const onClickDeleteSystemContext = async (systemContextId: string) => {
-    try {
-      const idx = systemContextList.findIndex(
-        (item) => item.systemContextId === systemContextId
-      );
-      if (idx >= 0) {
-        setSystemContextList(systemContextList.filter((_, i) => i !== idx));
-      }
-      await deleteSystemContext(systemContextId);
-      mutate();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const onClickUpdateSystemContext = async (
-    systemContextId: string,
-    title: string
-  ) => {
-    try {
-      const idx = systemContextList.findIndex(
-        (item) => item.systemContextId === systemContextId
-      );
-      if (idx >= 0) {
-        setSystemContextList(
-          systemContextList.map((item, i) => {
-            if (i === idx) {
-              return { ...item, systemContextTitle: title };
-            }
-            return item;
-          })
-        );
-      }
-      await updateSystemContextTitle(systemContextId, title);
-      mutate();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const onReasoningSwitched = useCallback(() => {
-    if (reasoningEnabled) {
-      setOverrideModelParameters({
-        ...overrideModelParameters,
-        reasoningConfig: {
-          ...overrideModelParameters.reasoningConfig,
-          type: 'disabled',
-        },
-      });
-    } else {
-      setOverrideModelParameters({
-        ...overrideModelParameters,
-        reasoningConfig: {
-          ...overrideModelParameters.reasoningConfig,
-          type: adaptiveThinking ? 'adaptive' : 'enabled',
-        },
-      });
-    }
-  }, [
-    reasoningEnabled,
-    adaptiveThinking,
-    overrideModelParameters,
-    setOverrideModelParameters,
-  ]);
 
   const handleDragOver = (event: React.DragEvent) => {
     // When a file is dragged, display the overlay
@@ -529,107 +440,76 @@ const ChatPage: React.FC = () => {
     }
   };
 
-  // Initialize forceExpandPromptList to null when the path changes
-  useEffect(() => {
-    setForceExpandPromptList(null);
-  }, [pathname, setForceExpandPromptList]);
-
   return (
     <>
       <div
         onDragOver={fileUpload ? handleDragOver : undefined}
-        className={`${!isEmpty ? 'screen:pb-48' : ''} relative`}>
-        <div className="invisible my-0 flex h-0 items-center justify-center text-xl font-semibold lg:visible lg:my-5 lg:h-min print:visible print:my-5 print:h-min">
-          {title}
+        className="relative pb-44">
+        <div className="invisible sticky top-0 z-10 h-0 border-[#EFEFEF] bg-white/90 backdrop-blur lg:visible lg:flex lg:h-14 lg:items-center lg:justify-between lg:border-b lg:px-6 print:hidden">
+          <div className="truncate text-sm font-medium">{title}</div>
+          {chatId && (
+            <button
+              className="ml-4 flex flex-none items-center gap-1.5 rounded-lg px-2 py-1 text-[13px] text-[#5A5A5A] hover:bg-[#F7F7F7]"
+              onClick={() => {
+                setShowShareIdModal(true);
+              }}>
+              <PiShareFat />
+              {share ? <>{t('chat.sharing')}</> : <>{t('chat.share')}</>}
+            </button>
+          )}
         </div>
 
         {isOver && fileUpload && (
           <div
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className="fixed bottom-0 left-0 right-0 top-0 z-[999] bg-slate-300 p-10 text-center">
-            <div className="flex h-full w-full items-center justify-center outline-dashed">
-              <div className="font-bold">{t('chat.drop_files')}</div>
+            className="fixed bottom-0 left-0 right-0 top-0 z-[999] bg-white/90 p-10 text-center">
+            <div className="border-aws-squid-ink/30 text-aws-squid-ink flex h-full w-full items-center justify-center rounded-2xl border border-dashed">
+              <div className="font-medium">{t('chat.drop_files')}</div>
             </div>
           </div>
         )}
 
-        <div className="mt-2 flex w-full items-end justify-center lg:mt-0 print:hidden">
-          <Select
-            value={modelId}
-            onChange={setModelId}
-            options={availableModels.map((m) => {
-              return { value: m, label: modelDisplayName(m) };
-            })}
-          />
-        </div>
-
-        {((isEmpty && !loadingMessages) || loadingMessages) && (
-          <div className="relative flex h-[calc(100vh-13rem)] flex-col items-center justify-center gap-y-4">
-            <BedrockIcon
-              className={`fill-gray-400 ${
-                loadingMessages ? 'animate-pulse' : ''
-              }`}
-            />
-
+        {(isEmpty || loadingMessages) && (
+          <div className="flex h-[calc(100vh-20rem)] flex-col items-center justify-center gap-y-4 px-4 text-center">
+            {logoPath ? (
+              <img
+                src={logoPath}
+                alt=""
+                className={`size-12 rounded-xl ${loadingMessages ? 'animate-pulse' : ''}`}
+              />
+            ) : null}
             {!loadingMessages && (
-              <Button
-                className="text-sm"
-                outlined
-                onClick={() => {
-                  setForceExpandPromptList(Math.random());
-                }}>
-                {t('chat.view_prompt_examples')}
-              </Button>
+              <>
+                <div className="text-aws-font-color text-2xl font-medium">
+                  {t('chat.empty_greeting')}
+                </div>
+                <div className="text-[13px] text-[#969696]">
+                  {useKnowledgeBase
+                    ? t('chat.empty_hint_documents')
+                    : t('chat.empty_hint')}
+                </div>
+              </>
             )}
           </div>
         )}
 
-        {!isEmpty && !loadingMessages && (
-          <div className="my-2 flex flex-col items-end pr-3 print:hidden">
-            {chatId && (
-              <div>
-                <button
-                  className="mb-1 flex items-center justify-center text-xs hover:underline"
-                  onClick={() => {
-                    setShowShareIdModal(true);
-                  }}>
-                  <PiShareFatFill className="mr-1" />
-                  {share ? <>{t('chat.sharing')}</> : <>{t('chat.share')}</>}
-                </button>
-              </div>
-            )}
-            <Switch
-              checked={showSystemContext}
-              onSwitch={setShowSystemContext}
-              label={t('chat.show_system_prompt')}
-            />
-          </div>
-        )}
-
-        <div ref={scrollableContainer}>
+        <div ref={scrollableContainer} className="pt-4">
           {!isEmpty &&
-            showingMessages.map((chat, idx) => (
-              <div key={showSystemContext ? idx : idx + 1}>
-                {idx === 0 && (
-                  <div className="w-full border-b border-gray-300"></div>
-                )}
-                <ChatMessage
-                  chatContent={chat}
-                  loading={loading && idx === showingMessages.length - 1}
-                  setSaveSystemContext={setSaveSystemContext}
-                  setShowSystemContextModal={setShowSystemContextModal}
-                  allowRetry={idx === showingMessages.length - 1}
-                  editable={idx === showingMessages.length - 2 && !loading}
-                  onCommitEdit={
-                    idx === showingMessages.length - 2 && !loading
-                      ? onEdit
-                      : undefined
-                  }
-                  retryGeneration={onRetry}
-                />
-                <div className="w-full border-b border-gray-300"></div>
-              </div>
+            !loadingMessages &&
+            messages.map((chat, idx) => (
+              <ChatMessage
+                key={idx}
+                idx={idx}
+                chatContent={chat}
+                loading={loading && idx === messages.length - 1}
+                allowRetry={idx === messages.length - 1}
+                editable={idx === messages.length - 2 && !loading}
+                onCommitEdit={
+                  idx === messages.length - 2 && !loading ? onEdit : undefined
+                }
+                retryGeneration={onRetry}
+              />
             ))}
         </div>
 
@@ -637,54 +517,11 @@ const ChatPage: React.FC = () => {
           <ScrollTopBottom />
         </div>
 
-        <div className="fixed bottom-0 z-0 flex w-full flex-col items-center justify-center lg:pr-64 print:hidden">
-          {isEmpty && !loadingMessages && !chatId && (
-            <ExpandableField
-              label={t('chat.system_prompt')}
-              className="relative w-11/12 md:w-10/12 lg:w-4/6 xl:w-3/6">
-              <>
-                <div className="absolute -top-2 right-0 mb-2 flex justify-end">
-                  <Button
-                    outlined
-                    className="text-xs"
-                    onClick={() => {
-                      clear();
-                      setInputSystemContext(currentSystemContext);
-                    }}>
-                    {t('chat.initialize')}
-                  </Button>
-                  <Button
-                    outlined
-                    className="ml-1 text-xs"
-                    onClick={() => {
-                      setSaveSystemContext(inputSystemContext);
-                      setShowSystemContextModal(true);
-                    }}>
-                    {t('chat.save')}
-                  </Button>
-                </div>
-
-                <InputChatContent
-                  disableMarginBottom={true}
-                  content={inputSystemContext}
-                  onChangeContent={setInputSystemContext}
-                  fullWidth={true}
-                  resetDisabled={true}
-                  disabled={inputSystemContext === currentSystemContext}
-                  sendIcon={<PiArrowClockwiseBold />}
-                  onSend={() => {
-                    updateSystemContext(inputSystemContext);
-                  }}
-                  hideReset={true}
-                />
-              </>
-            </ExpandableField>
-          )}
+        <div className="fixed bottom-0 left-0 right-0 z-0 flex flex-col items-center justify-center bg-gradient-to-t from-white via-white to-transparent pt-8 lg:left-72 print:hidden">
           <InputChatContent
             content={content}
             disabled={loading && !writing}
             onChangeContent={setContent}
-            resetDisabled={!!chatId}
             onSend={() => {
               if (!loading) {
                 onSend();
@@ -692,41 +529,63 @@ const ChatPage: React.FC = () => {
                 onStop();
               }
             }}
-            onReset={onReset}
+            hideReset={true}
             fileUpload={fileUpload}
             fileLimit={fileLimit}
             accept={accept}
             reasoning={reasoning && !adaptiveThinkingAlwaysOn}
-            onReasoningSwitched={onReasoningSwitched}
+            onReasoningSwitched={() => {
+              setOverrideModelParameters({
+                ...overrideModelParameters,
+                reasoningConfig: {
+                  ...overrideModelParameters.reasoningConfig,
+                  type: reasoningEnabled
+                    ? 'disabled'
+                    : adaptiveThinking
+                      ? 'adaptive'
+                      : 'enabled',
+                },
+              });
+            }}
             reasoningEnabled={reasoningEnabled}
             setting={setting}
             onSetting={() => {
               setShowSetting(true);
             }}
             canStop={writing}
+            toolbar={
+              <>
+                {knowledgeBaseAvailable && (
+                  <button
+                    className={`flex h-8 items-center gap-1.5 rounded-lg px-2 text-[13px] ${
+                      useKnowledgeBase
+                        ? 'text-aws-smile bg-aws-rind'
+                        : 'text-[#969696] hover:bg-[#F7F7F7]'
+                    }`}
+                    aria-pressed={useKnowledgeBase}
+                    onClick={onSwitchKnowledgeBase}>
+                    <PiBooks className="text-base" />
+                    <span className="hidden sm:inline">
+                      {t('chat.answer_from_documents')}
+                    </span>
+                  </button>
+                )}
+                <div className="relative min-w-0">
+                  <Select
+                    quiet
+                    notItem
+                    value={modelId}
+                    onChange={setModelId}
+                    options={availableModels.map((m) => {
+                      return { value: m, label: modelDisplayName(m) };
+                    })}
+                  />
+                </div>
+              </>
+            }
           />
         </div>
       </div>
-
-      {isEmpty && !loadingMessages && (
-        <PromptList
-          onClick={onClickSamplePrompt}
-          systemContextList={systemContextList as SystemContext[]}
-          onClickDeleteSystemContext={onClickDeleteSystemContext}
-          onClickUpdateSystemContext={onClickUpdateSystemContext}
-          forceExpand={forceExpandPromptList}
-        />
-      )}
-
-      <ModalSystemContext
-        showSystemContextModal={showSystemContextModal}
-        saveSystemContext={saveSystemContext}
-        saveSystemContextTitle={saveSystemContextTitle}
-        setShowSystemContextModal={setShowSystemContextModal}
-        setSaveSystemContext={setSaveSystemContext}
-        setSaveSystemContextTitle={setSaveSystemContextTitle}
-        onCreateSystemContext={onCreateSystemContext}
-      />
 
       <ModalDialog
         isOpen={showShareIdModal}
@@ -734,7 +593,7 @@ const ChatPage: React.FC = () => {
         onClose={() => {
           setShowShareIdModal(false);
         }}>
-        <div className="py-3 text-xs text-gray-600">
+        <div className="py-3 text-[13px] text-[#5A5A5A]">
           {share ? (
             <>{t('chat.delete_link_message')}</>
           ) : (
@@ -742,8 +601,8 @@ const ChatPage: React.FC = () => {
           )}
         </div>
         {shareLink && (
-          <div className="bg-aws-squid-ink my-2 flex flex-row items-center justify-between rounded px-2 py-1 text-white">
-            <div className="break-all text-sm">{shareLink}</div>
+          <div className="my-2 flex flex-row items-center justify-between rounded-lg border border-[#E8E8E8] bg-[#F7F7F7] px-3 py-2">
+            <div className="break-all text-[13px]">{shareLink}</div>
             <ButtonCopy text={shareLink} />
           </div>
         )}
@@ -762,7 +621,7 @@ const ChatPage: React.FC = () => {
               <Button
                 onClick={onDeleteShareId}
                 loading={deletingShareId}
-                className="bg-red-500">
+                className="border-red-500 bg-red-500">
                 {t('chat.delete_link')}
               </Button>
             </div>
@@ -780,13 +639,11 @@ const ChatPage: React.FC = () => {
         }}
         title={t('chat.advanced_options')}>
         {setting && (
-          <div className="">
-            <ModelParameters
-              modelFeatureFlags={MODELS.getModelMetadata(modelId).flags}
-              overrideModelParameters={overrideModelParameters}
-              setOverrideModelParameters={setOverrideModelParameters}
-            />
-          </div>
+          <ModelParameters
+            modelFeatureFlags={MODELS.getModelMetadata(modelId).flags}
+            overrideModelParameters={overrideModelParameters}
+            setOverrideModelParameters={setOverrideModelParameters}
+          />
         )}
         <div className="mt-4 flex justify-end">
           <Button

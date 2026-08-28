@@ -145,6 +145,7 @@ chart:
   zoom: Zoom chart
 chat:
   advanced_options: Advanced Options
+  answer_from_documents: Documents
   create_link: Create Link
   create_link_message: >-
     By creating a link, you will share the conversation history with all users
@@ -155,12 +156,19 @@ chat:
   delete_link: Delete Link
   delete_link_message: You can stop sharing the conversation history by deleting the link.
   drop_files: Drop files here
+  empty_greeting: How can I help you today?
+  empty_hint: Ask anything, or attach a file to get started.
+  empty_hint_documents: >-
+    Answers are grounded in your documents. Turn off Documents in the composer
+    to ask the model directly.
   hint_cmd_enter: ⌘ + Enter to Submit
   hint_ctrl_enter: Ctrl + Enter to Submit
   history: History
   initialize: Initialize
+  new_chat: New chat
   open_link: Open Link
   prompt_examples: Prompt Examples
+  recent: Recent
   save: Save
   saved_system_prompts: Saved System Prompts
   search_by_title: Search by title
@@ -932,6 +940,7 @@ navigation:
   home: Home
   imageGeneration: Image Generation
   meetingMinutes: Meeting Minutes
+  menu: Menu
   promptOptimization: Prompt Optimization
   ragChat: RAG Chat
   settings: Settings
@@ -945,6 +954,7 @@ navigation:
   webContentExtraction: Web Content Extraction
   writing: Writing
 notfound:
+  back_to_chat: Back to chat
   title: Not Found
 optimizePrompt:
   clear: Clear
@@ -1035,14 +1045,14 @@ setting:
     line_break_enter: Press Enter to create new line
     login_status: Login status
     rag_enabled: RAG (Amazon Kendra) Enabled
-    rag_kb_enabled: RAG (Knowledge Base) Enabled
+    rag_kb_enabled: Document retrieval (Knowledge Base)
     show_email: Show Email
     show_tools: Show Tools
     show_use_case_builder: Show Use Case Builder
     stats: Statistics
     typing_animation: Typing Animation
     version: Version
-    version_help: Referencing the version in package.json of generative-ai-use-cases
+    version_help: The deployed application version
   recent_updates: Recent Updates
   signout: Sign Out
   system: System settings
