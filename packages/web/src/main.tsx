@@ -1,4 +1,19 @@
 import './i18n/config';
+
+// A redeploy replaces the hashed chunks, so a tab opened before the deploy
+// 404s on its next lazy import. Vite raises vite:preloadError for exactly
+// this; one guarded reload picks up the new build instead of a dead screen.
+window.addEventListener('vite:preloadError', (event) => {
+  const key = 'mimir-chunk-reload';
+  if (sessionStorage.getItem(key) !== '1') {
+    sessionStorage.setItem(key, '1');
+    event.preventDefault();
+    window.location.reload();
+  }
+});
+window.addEventListener('load', () => {
+  sessionStorage.removeItem('mimir-chunk-reload');
+});
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import AuthWithUserpool from './components/AuthWithUserpool';
