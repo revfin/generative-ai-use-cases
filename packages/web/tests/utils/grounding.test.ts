@@ -114,11 +114,11 @@ describe('appendSourceFootnotes', () => {
   it('adds a footnote only for the cited source', () => {
     const answer = appendSourceFootnotes('Thirty days.[^0]', sources);
 
-    expect(answer).toContain('Thirty days.[^0]');
+    expect(answer).toContain('Thirty days.[^src-0]');
     expect(answer).toContain(
-      '[^0]: [handbook.pdf (p.3)](https://s3.ap-south-1.amazonaws.com/docs/handbook.pdf#page=3)'
+      '[^src-0]: [handbook.pdf (p.3)](https://s3.ap-south-1.amazonaws.com/docs/handbook.pdf#page=3)'
     );
-    expect(answer).not.toContain('[^1]:');
+    expect(answer).not.toContain('[^src-1]:');
   });
 
   it('drops markers that point at nothing', () => {
@@ -127,6 +127,59 @@ describe('appendSourceFootnotes', () => {
 
   it('leaves an ungrounded answer alone', () => {
     expect(appendSourceFootnotes('Plain answer.', [])).toBe('Plain answer.');
+  });
+
+  it('discards the footnote definitions the model wrote itself', () => {
+    // GFM keeps the first definition per label, so a model-written block would
+    // otherwise shadow ours and render as a bare backref arrow
+    const answer = appendSourceFootnotes(
+      [
+        'Thirty days.[^0] Two weeks.[^1]',
+        '',
+        '[^0]:',
+        '[^1]: Handbook',
+        '    continued on the next line',
+      ].join('\n'),
+      sources
+    );
+
+    expect(answer).not.toContain('[^0]:');
+    expect(answer).not.toContain('[^1]: Handbook');
+    expect(answer).not.toContain('continued on the next line');
+    expect(answer).toContain(
+      '[^src-0]: [handbook.pdf (p.3)](https://s3.ap-south-1.amazonaws.com/docs/handbook.pdf#page=3)'
+    );
+    expect(answer).toContain('[^src-1]: [policy.pdf](https://x/policy.pdf)');
+  });
+
+  it('keeps every definition on its own line at the end of the answer', () => {
+    const answer = appendSourceFootnotes('A.[^0] B.[^1]', sources);
+    const [body, blank, ...definitions] = answer.split('\n');
+
+    expect(body).toBe('A.[^src-0] B.[^src-1]');
+    expect(blank).toBe('');
+    expect(definitions).toHaveLength(2);
+    expect(definitions.every((line) => /^\[\^src-\d+\]: /.test(line))).toBe(
+      true
+    );
+  });
+
+  it('falls back to a visible label when the metadata carries no title', () => {
+    const answer = appendSourceFootnotes('Cited.[^0]', [
+      { title: '', uri: '', content: 'text' },
+    ]);
+
+    expect(answer).toContain('[^src-0]: Source 1');
+  });
+
+  it('escapes brackets so an awkward filename stays a footnote', () => {
+    const answer = appendSourceFootnotes('Cited.[^0]', [
+      { title: 'report[final].pdf', uri: 'https://x/r.pdf', content: 'text' },
+    ]);
+
+    expect(answer).toContain(
+      '[^src-0]: [report\\[final\\].pdf](https://x/r.pdf)'
+    );
   });
 });
 
@@ -141,6 +194,18 @@ describe('stripSourceFootnotes', () => {
 
     expect(message.content).toBe('Thirty days.');
     expect(message.role).toBe('assistant');
+  });
+
+  it('removes the namespaced citations this app writes', () => {
+    const [message] = stripSourceFootnotes([
+      {
+        role: 'assistant',
+        content:
+          'Thirty days.[^src-0]\n\n[^src-0]: [handbook.pdf (p.3)](https://x#page=3)',
+      },
+    ]);
+
+    expect(message.content).toBe('Thirty days.');
   });
 
   it('leaves the system context alone, markers and all', () => {
