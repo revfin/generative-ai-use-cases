@@ -31,6 +31,10 @@ chat:
   initialize: 초기화
   model_parameters: 모델 매개변수
   open_link: 링크 열기
+  preview_csv_truncated: 전체 {{total}}행 중 처음 {{shown}}행을 표시합니다
+  preview_open_new_tab: 새 탭에서 열기
+  preview_page: '{{page}}페이지'
+  preview_unavailable: 미리 볼 수 없습니다
   prompt_examples: 프롬프트 예시
   save: 저장
   saved_system_prompts: 저장된 시스템 프롬프트
@@ -40,7 +44,13 @@ chat:
   share_conversation: 대화 기록 공유
   sharing: 공유 중
   show_system_prompt: 시스템 프롬프트 표시
+  status_reading_other: 출처 {{count}}개를 읽는 중
+  status_searching: 문서를 검색하는 중…
+  status_thinking: 생각하는 중…
   system_prompt: 시스템 프롬프트
+  thinking: 생각하는 중…
+  thought_for: '{{seconds}}초 동안 생각함'
+  thought_process: 사고 과정
   title: 채팅
   view_prompt_examples: 프롬프트 예시 보기
 common:
@@ -78,7 +88,6 @@ common:
   start_over: 다시 시작
   submit: 제출
   title: 제목
-  trace: 추적
   try: 시도
 demo:
   inter_use_cases: 사용 사례 통합

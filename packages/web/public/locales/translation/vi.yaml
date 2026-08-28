@@ -20,6 +20,10 @@ chat:
   history: Lịch sử
   initialize: Khởi tạo
   open_link: Mở liên kết
+  preview_csv_truncated: Hiển thị {{shown}} hàng đầu trong tổng số {{total}} hàng
+  preview_open_new_tab: Mở trong tab mới
+  preview_page: Trang {{page}}
+  preview_unavailable: Không thể xem trước
   prompt_examples: Ví dụ prompt
   save: Lưu
   saved_system_prompts: System prompt đã lưu
@@ -29,7 +33,13 @@ chat:
   share_conversation: Chia sẻ lịch sử cuộc trò chuyện
   sharing: Đang chia sẻ
   show_system_prompt: Hiển thị system prompt
+  status_reading_other: Đang đọc {{count}} nguồn
+  status_searching: Đang tìm trong tài liệu…
+  status_thinking: Đang suy nghĩ…
   system_prompt: System prompt
+  thinking: Đang suy nghĩ…
+  thought_for: Đã suy nghĩ {{seconds}} giây
+  thought_process: Quá trình suy nghĩ
   title: Chat
   view_prompt_examples: Xem ví dụ prompt
 common:
@@ -66,7 +76,6 @@ common:
   start_over: Bắt đầu lại từ đầu
   submit: Gửi
   title: Tiêu đề
-  trace: Trace
   try: Thử
 demo:
   inter_use_cases: Liên kết use case

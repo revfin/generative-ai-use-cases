@@ -172,6 +172,10 @@ chat:
   initialize: Initialize
   new_chat: New chat
   open_link: Open Link
+  preview_csv_truncated: Showing the first {{shown}} of {{total}} rows
+  preview_open_new_tab: Open in new tab
+  preview_page: Page {{page}}
+  preview_unavailable: Preview not available
   prompt_examples: Prompt Examples
   recent: Recent
   regenerate: Regenerate
@@ -183,7 +187,14 @@ chat:
   share_conversation: Share Conversation History
   sharing: Sharing
   show_system_prompt: Show system prompt
+  status_reading_one: Reading 1 source
+  status_reading_other: Reading {{count}} sources
+  status_searching: Searching documents…
+  status_thinking: Thinking…
   system_prompt: System Prompt
+  thinking: Thinking…
+  thought_for: Thought for {{seconds}}s
+  thought_process: Thought process
   title: Chat
   token_usage: '{{input}} tokens in · {{output}} tokens out'
   view_prompt_examples: View Prompt Examples
@@ -239,7 +250,6 @@ common:
   start_over: Start over
   submit: Submit
   title: Title
-  trace: Trace
   try: Try
   update: Update
 demo:

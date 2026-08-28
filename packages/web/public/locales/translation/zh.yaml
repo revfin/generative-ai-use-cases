@@ -18,6 +18,10 @@ chat:
   history: 对话历史
   initialize: 初始化
   open_link: 打开链接
+  preview_csv_truncated: 显示前 {{shown}} 行，共 {{total}} 行
+  preview_open_new_tab: 在新标签页中打开
+  preview_page: 第 {{page}} 页
+  preview_unavailable: 无法预览
   prompt_examples: 提示示例
   save: 保存
   saved_system_prompts: 已保存的系统提示
@@ -27,7 +31,13 @@ chat:
   share_conversation: 分享对话历史
   sharing: 分享中
   show_system_prompt: 显示系统提示
+  status_reading_other: 正在阅读 {{count}} 个来源
+  status_searching: 正在搜索文档…
+  status_thinking: 正在思考…
   system_prompt: 系统提示
+  thinking: 正在思考…
+  thought_for: 思考了 {{seconds}} 秒
+  thought_process: 思考过程
   title: 聊天
 common:
   cancel: 取消
@@ -64,7 +74,6 @@ common:
   start_over: 重新开始
   submit: 提交
   title: 标题
-  trace: 跟踪
   try: 尝试
 demo:
   inter_use_cases: 用例集成

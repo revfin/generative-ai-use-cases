@@ -37,6 +37,14 @@ import {
   FileLimit,
 } from 'generative-ai-use-cases';
 import ModelParameters from '../components/ModelParameters';
+import DocumentPreviewPanel from '../components/DocumentPreviewPanel';
+import useDocumentPreview from '../hooks/useDocumentPreview';
+import {
+  IDLE_TURN_STATUS,
+  TurnEvent,
+  TurnStatus,
+  nextTurnStatus,
+} from '../utils/turnStatus';
 import { AcceptedDotExtensions } from '../utils/MediaUtils';
 import { useTranslation } from 'react-i18next';
 
@@ -254,6 +262,36 @@ const ChatPage: React.FC = () => {
     return [...messages].reverse().find((m) => m.role === 'user')?.content;
   }, [messages]);
 
+  // What the in-flight turn is actually doing, driven by real events only
+  const [turnStatus, setTurnStatus] = useState<TurnStatus>(IDLE_TURN_STATUS);
+  const onTurnEvent = useCallback((event: TurnEvent) => {
+    setTurnStatus((previous) => nextTurnStatus(previous, event));
+  }, []);
+
+  // Reasoning and answer deltas both land on the last assistant message -
+  // Bedrock streams reasoningContent into `trace` - so the stream itself is the
+  // event source, no extra plumbing through useChat
+  useEffect(() => {
+    if (!loading) {
+      onTurnEvent({ type: 'turn-end' });
+      return;
+    }
+
+    const last = messages[messages.length - 1];
+
+    if (last?.role !== 'assistant') {
+      return;
+    }
+
+    if ((last.content ?? '').trim() !== '') {
+      onTurnEvent({ type: 'answer' });
+    } else if ((last.trace ?? '') !== '') {
+      onTurnEvent({ type: 'reasoning' });
+    }
+  }, [loading, messages, onTurnEvent]);
+
+  const previewOpen = useDocumentPreview((state) => state.doc !== null);
+
   // Retrieve first, inject the passages into the system context, then let the
   // normal streaming chat answer. Attachments, history and reasoning are
   // untouched by this - the documents are just context.
@@ -270,6 +308,7 @@ const ChatPage: React.FC = () => {
       let sources: GroundingSource[] = [];
 
       setLoading(true);
+      onTurnEvent({ type: 'retrieve-start' });
 
       if (showPlaceholder) {
         // Echo the question immediately so retrieval never looks like a freeze
@@ -280,6 +319,8 @@ const ChatPage: React.FC = () => {
       try {
         sources = await retrieveSources(question, previousQuestion);
       } finally {
+        onTurnEvent({ type: 'retrieve-settled', count: sources.length });
+
         if (showPlaceholder) {
           popMessage();
           popMessage();
@@ -302,11 +343,13 @@ const ChatPage: React.FC = () => {
       pushMessage,
       popMessage,
       updateSystemContext,
+      onTurnEvent,
     ]
   );
 
   const onSend = useCallback(async () => {
     setFollowing(true);
+    onTurnEvent({ type: 'turn-start' });
     const savedContent = content;
     const previousQuestion = lastQuestion;
     setContent('');
@@ -341,6 +384,7 @@ const ChatPage: React.FC = () => {
   ]);
 
   const onRetry = useCallback(async () => {
+    onTurnEvent({ type: 'turn-start' });
     // The question has not changed, but re-grounding keeps citations correct
     // even after the conversation was restored from history
     const sources = lastQuestion
@@ -364,6 +408,7 @@ const ChatPage: React.FC = () => {
     groundTurn,
     lastQuestion,
     overrideModelParameters,
+    onTurnEvent,
   ]);
 
   const onStop = useCallback(() => {
@@ -373,6 +418,7 @@ const ChatPage: React.FC = () => {
   const onEdit = useCallback(
     async (modifiedPrompt: string) => {
       setFollowing(true);
+      onTurnEvent({ type: 'turn-start' });
       const sources = await groundTurn(modifiedPrompt, undefined, false);
       editChat(
         modifiedPrompt,
@@ -388,7 +434,14 @@ const ChatPage: React.FC = () => {
         overrideModelParameters
       );
     },
-    [editChat, base64Cache, groundTurn, setFollowing, overrideModelParameters]
+    [
+      editChat,
+      base64Cache,
+      groundTurn,
+      setFollowing,
+      overrideModelParameters,
+      onTurnEvent,
+    ]
   );
 
   const [creatingShareId, setCreatingShareId] = useState(false);
@@ -454,7 +507,9 @@ const ChatPage: React.FC = () => {
     <>
       <div
         onDragOver={fileUpload ? handleDragOver : undefined}
-        className="relative pb-44">
+        className={`relative pb-44 transition-[padding] duration-200 ease-out ${
+          previewOpen ? 'lg:pr-[max(420px,44vw)]' : ''
+        }`}>
         <div className="invisible sticky top-0 z-10 h-0 border-[#EFEFEF] bg-white/90 backdrop-blur lg:visible lg:flex lg:h-14 lg:items-center lg:justify-between lg:border-b lg:px-6 print:hidden">
           <div className="truncate text-sm font-medium">{title}</div>
           {chatId && (
@@ -519,15 +574,24 @@ const ChatPage: React.FC = () => {
                   idx === messages.length - 2 && !loading ? onEdit : undefined
                 }
                 retryGeneration={onRetry}
+                turnStatus={
+                  idx === messages.length - 1 ? turnStatus : undefined
+                }
               />
             ))}
         </div>
 
-        <div className="fixed right-4 top-[calc(50vh-2rem)] z-0 lg:right-8">
+        <div
+          className={`fixed right-4 top-[calc(50vh-2rem)] z-0 lg:right-8 ${
+            previewOpen ? 'lg:hidden' : ''
+          }`}>
           <ScrollTopBottom />
         </div>
 
-        <div className="fixed bottom-0 left-0 right-0 z-0 flex flex-col items-center justify-center bg-gradient-to-t from-white via-white to-transparent pt-8 lg:left-72 print:hidden">
+        <div
+          className={`fixed bottom-0 left-0 right-0 z-0 flex flex-col items-center justify-center bg-gradient-to-t from-white via-white to-transparent pt-8 transition-[right] duration-200 ease-out lg:left-72 print:hidden ${
+            previewOpen ? 'lg:right-[max(420px,44vw)]' : ''
+          }`}>
           <InputChatContent
             content={content}
             disabled={loading && !writing}
@@ -579,6 +643,9 @@ const ChatPage: React.FC = () => {
           />
         </div>
       </div>
+
+      {/* One panel for the whole page: a second citation swaps its contents */}
+      <DocumentPreviewPanel />
 
       <ModalDialog
         isOpen={showShareIdModal}

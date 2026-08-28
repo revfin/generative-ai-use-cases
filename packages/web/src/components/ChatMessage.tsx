@@ -15,6 +15,11 @@ import {
   PiCheck,
   PiX,
 } from 'react-icons/pi';
+import ThinkingBlock from './ThinkingBlock';
+import TurnStatusStrip from './TurnStatusStrip';
+import { CitationContext, NO_CITATIONS } from './CitationContext';
+import { parseSourceFootnotes } from '../utils/grounding';
+import { TurnStatus } from '../utils/turnStatus';
 import { BaseProps } from '../@types/common';
 import { ShownMessage, UpdateFeedbackRequest } from 'generative-ai-use-cases';
 import useBranding from '../hooks/useBranding';
@@ -40,6 +45,8 @@ type Props = BaseProps & {
   editable?: boolean;
   retryGeneration?: () => void;
   onCommitEdit?: (modifiedPrompt: string) => void;
+  /** Live status of the turn being generated, for the in-flight strip. */
+  turnStatus?: TurnStatus;
 };
 
 const ChatMessage: React.FC<Props> = (props) => {
@@ -56,8 +63,19 @@ const ChatMessage: React.FC<Props> = (props) => {
   const [showThankYouMessage, setShowThankYouMessage] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editingPrompt, setEditingPrompt] = useState('');
-  const [isOpenTrace, setIsOpenTrace] = useState(false);
   const { getFileDownloadSignedUrl } = useFiles(pathname);
+
+  // The source list is appended once the answer is complete, so the scan is
+  // skipped for every streaming chunk in between
+  const citations = useMemo(() => {
+    const content = chatContent?.content ?? '';
+
+    return content.includes('[^src-')
+      ? parseSourceFootnotes(content)
+      : NO_CITATIONS;
+  }, [chatContent?.content]);
+
+  const answerStarted = (chatContent?.content ?? '').trim() !== '';
 
   const { setTypingTextInput, typingTextOutput } = useTyping(
     chatContent?.role === 'assistant' && props.loading
@@ -181,11 +199,6 @@ const ChatMessage: React.FC<Props> = (props) => {
     setShowFeedbackForm(false);
   };
 
-  const toggleOpenTrace = (e: React.MouseEvent<HTMLElement, MouseEvent>) => {
-    e.preventDefault();
-    setIsOpenTrace(!isOpenTrace);
-  };
-
   const attachments =
     chatContent?.extraData && chatContent.extraData.length > 0 ? (
       <div className="mb-2 flex flex-wrap gap-2">
@@ -293,55 +306,40 @@ const ChatMessage: React.FC<Props> = (props) => {
 
             <div className="w-full min-w-0">
               {chatContent?.trace && (
-                <div className="mb-2 rounded-lg border border-[#EFEFEF] bg-[#FAFAFA] p-2">
-                  <details className="cursor-pointer" open={isOpenTrace}>
-                    <summary
-                      className="text-[13px] text-[#5A5A5A]"
-                      onClick={toggleOpenTrace}>
-                      <div className="inline-flex gap-1">
-                        {t('common.trace')}
-                        {props.loading && (
-                          <div className="border-aws-squid-ink size-4 animate-spin rounded-full border-2 border-t-transparent"></div>
-                        )}
-                      </div>
-                    </summary>
-                    <Markdown prefix={`${props.idx}-trace`}>
-                      {chatContent.trace}
-                    </Markdown>
-                  </details>
-
-                  {!isOpenTrace &&
-                    props.loading &&
-                    !chatContent?.content &&
-                    chatContent?.traceInlineMessage && (
-                      <Markdown
-                        className="mt-2"
-                        prefix={`${props.idx}-last-trace`}>
-                        {chatContent.traceInlineMessage}
-                      </Markdown>
-                    )}
-                </div>
+                <ThinkingBlock
+                  content={chatContent.trace}
+                  inlineMessage={chatContent.traceInlineMessage}
+                  streaming={props.loading}
+                  answerStarted={answerStarted}
+                  prefix={`${props.idx}-trace`}
+                />
               )}
 
               {attachments}
 
               {chatContent?.role === 'assistant' && (
-                <Markdown prefix={`${props.idx}`}>
-                  {typingTextOutput +
-                    `${
-                      props.loading && (chatContent?.content ?? '') !== ''
-                        ? '▍'
-                        : ''
-                    }`}
-                </Markdown>
+                <CitationContext.Provider value={citations}>
+                  <Markdown prefix={`${props.idx}`}>
+                    {typingTextOutput +
+                      `${
+                        props.loading && (chatContent?.content ?? '') !== ''
+                          ? '▍'
+                          : ''
+                      }`}
+                  </Markdown>
+                </CitationContext.Provider>
               )}
               {chatContent?.role === 'system' && (
                 <div className="whitespace-pre-wrap">{typingTextOutput}</div>
               )}
-              {props.loading && (chatContent?.content ?? '') === '' && (
-                /* eslint-disable-next-line @shopify/jsx-no-hardcoded-content */
-                <div className="animate-pulse">▍</div>
-              )}
+              {/* The strip stands in for the bare cursor, it never joins it -
+                  and it stays quiet while the reasoning block is already
+                  saying "Thinking…" */}
+              {props.loading &&
+                (chatContent?.content ?? '') === '' &&
+                !chatContent?.trace && (
+                  <TurnStatusStrip status={props.turnStatus} />
+                )}
 
               {/* Quiet, hover-revealed actions: the answer is the content,
                   these are the tools */}

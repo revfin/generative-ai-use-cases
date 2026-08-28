@@ -263,6 +263,46 @@ export const appendSourceFootnotes = (
   return footnotes === '' ? cleaned : `${cleaned}\n\n${footnotes}`;
 };
 
+/** Where a citation points, once the footnote list has been parsed back. */
+export type CitationTarget = {
+  label: string;
+  href: string;
+};
+
+// The definitions written by `appendSourceFootnotes`, read back: label, then
+// either a markdown link or a bare title
+const SOURCE_FOOTNOTE = /^\[\^(src-\d+)\]:[ \t]*(.*)$/gm;
+const MARKDOWN_LINK = /^\[((?:\\.|[^\\\]])*)\]\((\S*)\)$/;
+
+const unescapeLinkText = (text: string): string =>
+  text.replace(/\\([[\]\\])/g, '$1');
+
+/**
+ * Read the footnote list back out of a rendered answer.
+ *
+ * The inline `[^src-0]` pill renders as a link to the footnote anchor, not to
+ * the document, so the preview panel needs this map to turn a pill click into a
+ * document. Sources without a URI are skipped: there is nothing to preview.
+ */
+export const parseSourceFootnotes = (
+  message: string
+): Record<string, CitationTarget> => {
+  const targets: Record<string, CitationTarget> = {};
+
+  for (const [, label, body] of message.matchAll(SOURCE_FOOTNOTE)) {
+    const link = MARKDOWN_LINK.exec(body.trim());
+
+    if (link) {
+      targets[label] = {
+        label: unescapeLinkText(link[1]),
+        href: link[2],
+      };
+    }
+  }
+
+  return targets;
+};
+
 /**
  * Strip citations from the history before it is replayed to the model: the
  * source ids of a previous turn mean nothing in the current one. Only answers

@@ -1,4 +1,5 @@
 import React, {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -19,6 +20,9 @@ import ButtonCopy from './ButtonCopy';
 import useRagFile from '../hooks/useRagFile';
 import { PiSpinnerGap } from 'react-icons/pi';
 import useFileApi from '../hooks/useFileApi';
+import useDocumentPreview from '../hooks/useDocumentPreview';
+import { useCitations } from './CitationContext';
+import { previewFileName, previewPage } from '../utils/documentPreview';
 import 'katex/dist/katex.min.css';
 
 // Reduce bundle size by registering only the languages used in the project
@@ -101,6 +105,10 @@ type Props = BaseProps & {
   prefix?: string;
 };
 
+// The anchor an inline `[^src-0]` pill points at: `#<prefix>-fn-src-0`. The
+// backref in the footnote list (`-fnref-src-0`) deliberately does not match.
+const FOOTNOTE_ANCHOR = /(?:^|-)fn-(src-\d+)$/;
+
 const LinkRenderer = ({
   href,
   children,
@@ -108,9 +116,26 @@ const LinkRenderer = ({
 }: ComponentProps<'a'> & ExtraProps) => {
   // Currently, the file download function from S3 is only used in RAG chat
   const { downloadDoc, isS3Url, downloading } = useRagFile();
+  const citations = useCitations();
+  const openPreview = useDocumentPreview((state) => state.openPreview);
+  const openHref = useDocumentPreview((state) => state.doc?.href);
+  const hasPanel = useDocumentPreview((state) => state.hosts > 0);
+
   const isS3 = useMemo(() => {
     return isS3Url(href ?? '');
   }, [isS3Url, href]);
+
+  // Both the inline pill and the entry in the source list stand for the same
+  // document, so both open - and highlight - the same preview
+  const target = useMemo(() => {
+    if (isS3) {
+      return href ?? '';
+    }
+
+    const label = FOOTNOTE_ANCHOR.exec(href?.replace(/^#/, '') ?? '')?.[1];
+
+    return label ? (citations[label]?.href ?? '') : '';
+  }, [citations, href, isS3]);
 
   // For Knowledge Base, we pass s3Type as a parameter
   // since it may need to reference S3 from a different account.
@@ -124,20 +149,64 @@ const LinkRenderer = ({
     );
   }, [location.pathname]);
 
+  const openDocument = useCallback(() => {
+    if (target === '') {
+      return false;
+    }
+
+    // Pages without a preview panel (shared conversations, agent chats) keep
+    // the original behaviour: sign the URL and hand it to a new tab
+    if (!hasPanel) {
+      if (isS3 && !downloading) {
+        downloadDoc(target, isKnowledgeBase ? 'knowledgeBase' : 'default');
+        return true;
+      }
+      return false;
+    }
+
+    openPreview({
+      href: target,
+      label: previewFileName(target),
+      page: previewPage(target),
+    });
+
+    return true;
+  }, [
+    downloadDoc,
+    downloading,
+    hasPanel,
+    isKnowledgeBase,
+    isS3,
+    openPreview,
+    target,
+  ]);
+
+  const active = target !== '' && target === openHref;
+  const activeProps = {
+    'data-citation-active': active ? 'true' : undefined,
+  };
+
   return (
     <>
       {isS3 ? (
+        // No href: the raw S3 URL is unsigned and would 403 on a plain
+        // navigation. `role`/`tabIndex`/`onKeyDown` restore the keyboard path
+        // that a bare `<a onClick>` loses.
         <a
           id={id}
-          onClick={() => {
-            if (!downloading) {
-              downloadDoc(
-                href ?? '',
-                isKnowledgeBase ? 'knowledgeBase' : 'default'
-              );
+          role="button"
+          tabIndex={0}
+          onClick={openDocument}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              openDocument();
             }
           }}
-          className={`cursor-pointer ${downloading ? 'text-gray-400' : ''}`}>
+          {...activeProps}
+          className={`cursor-pointer ${downloading ? 'text-gray-400' : ''} ${
+            active ? 'text-aws-smile' : ''
+          }`}>
           {children}
           {downloading && (
             <PiSpinnerGap className="mx-2 inline-block animate-spin" />
@@ -148,7 +217,15 @@ const LinkRenderer = ({
           id={id}
           href={href}
           target={href?.startsWith('#') ? '_self' : '_blank'}
-          rel="noreferrer">
+          rel="noreferrer"
+          {...activeProps}
+          onClick={(event) => {
+            // A citation pill jumps to the footnote only when there is nothing
+            // better to do with it
+            if (openDocument()) {
+              event.preventDefault();
+            }
+          }}>
           {children}
         </a>
       )}

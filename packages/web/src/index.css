@@ -43,6 +43,55 @@
   text-decoration: underline;
 }
 
+/* The citation whose document is open in the preview panel. `:has()` keeps the
+   pill styling on the <sup> where it belongs instead of duplicating it onto
+   the anchor. */
+.prose sup:has(a[data-citation-active='true']) {
+  background-color: #fff1e9;
+  color: #ff6600;
+}
+
+.prose .footnotes a[data-citation-active='true'] {
+  color: #ff6600;
+}
+
+/* Status text while a turn is in flight: a slow sweep across the label, no
+   spinner. Reduced motion gets the same sentence in plain muted grey. */
+.mimir-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    #969696 0%,
+    #969696 35%,
+    #1c256c 50%,
+    #969696 65%,
+    #969696 100%
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: mimir-shimmer 2s linear infinite;
+}
+
+@keyframes mimir-shimmer {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -20% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mimir-shimmer {
+    background-image: none;
+    color: #969696;
+    -webkit-text-fill-color: #969696;
+    animation: none;
+  }
+}
+
 /* Honour the OS "reduce motion" preference */
 @media (prefers-reduced-motion: reduce) {
   *,

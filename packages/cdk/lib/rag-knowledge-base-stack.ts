@@ -398,6 +398,18 @@ export class RagKnowledgeBaseStack extends Stack {
     });
 
     const dataSourceBucket = new s3.Bucket(this, 'DataSourceBucket', {
+      // The chat's citation preview fetches presigned objects from the app
+      // origin; without CORS those fetches die and only new-tab opens work.
+      // Auth stays entirely in the presigned signature - CORS just lets the
+      // browser read the response.
+      cors: [
+        {
+          allowedMethods: [s3.HttpMethods.GET, s3.HttpMethods.HEAD],
+          allowedOrigins: ['*'],
+          allowedHeaders: ['*'],
+          maxAge: 3000,
+        },
+      ],
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
       autoDeleteObjects: true,
