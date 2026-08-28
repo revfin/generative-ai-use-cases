@@ -106,9 +106,9 @@ const Select: React.FC<Props> = (props) => {
       <Listbox value={props.value} onChange={props.onChange}>
         <div className="relative">
           <Listbox.Button
-            className={`relative cursor-pointer text-left focus:outline-none ${
+            className={`focus-visible:ring-aws-squid-ink relative cursor-pointer text-left focus:outline-none focus-visible:ring-1 ${
               props.quiet
-                ? 'rounded-lg py-1 pl-2 pr-6 text-[13px] text-[#5A5A5A] hover:bg-[#F7F7F7]'
+                ? 'hover:text-aws-squid-ink flex h-8 max-w-36 items-center rounded-lg pl-2 pr-6 text-[13px] text-[#5A5A5A] transition-colors hover:bg-[#F7F7F7] sm:max-w-56'
                 : 'rounded border border-black/30 bg-white py-1.5 pl-3 pr-10'
             } ${props.fullWidth ? 'w-full' : 'w-fit'}`}>
             <span className="line-clamp-1">
@@ -145,7 +145,7 @@ const Select: React.FC<Props> = (props) => {
           leaveTo="opacity-0">
           <Listbox.Options
             className={`absolute z-10 max-h-60 w-fit min-w-64 overflow-auto rounded-lg bg-white py-1 text-base shadow-lg ring-1 ring-black/5 focus:outline-none sm:text-sm ${
-              props.quiet ? 'bottom-full mb-2' : 'mt-1'
+              props.quiet ? 'bottom-full right-0 mb-2' : 'mt-1'
             }`}>
             {props.options.map((option, idx) => (
               <Listbox.Option

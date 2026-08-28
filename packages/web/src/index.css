@@ -2,13 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Tailwind's settings override this, so we set important */
-.amplify-button--primary {
-  background-color: var(
-    --amplify-components-button-primary-background-color
-  ) !important;
-}
-
 /* Citations: the knowledge base answers land as markdown footnotes, so the
    footnote block is styled as a compact source list rather than prose. */
 .prose .footnotes {
@@ -81,23 +74,90 @@ input[type='number'] {
   }
 }
 
-/* Revfin theme for the Amplify authenticator (branding: Mimir) */
-[data-amplify-theme] {
-  --amplify-components-button-primary-background-color: #1c256c;
-  --amplify-components-button-primary-hover-background-color: #161e56;
-  --amplify-components-button-primary-focus-background-color: #161e56;
-  --amplify-components-button-primary-active-background-color: #10173f;
-  --amplify-components-button-link-color: #1c256c;
-  --amplify-components-button-link-hover-color: #ff6600;
-  --amplify-components-fieldcontrol-focus-border-color: #1c256c;
-  --amplify-components-tabs-item-active-color: #1c256c;
-  --amplify-components-tabs-item-active-border-color: #ff6600;
+/* ---------------------------------------------------------------------------
+   Sign in (Amplify Authenticator)
+
+   The stock widget is a bordered AWS card with tabs and shouting labels. This
+   turns it into a borderless, centered SaaS sign-in: hairline inputs, no
+   labels, one royal button. Amplify ships its own theme later in the cascade,
+   so the overrides are direct rather than variable-based.
+   --------------------------------------------------------------------------- */
+[data-amplify-authenticator] {
+  min-height: 100vh;
+  background-color: #ffffff;
 }
 
-/* Amplify ships its theme vars on the same selector later in the cascade,
-   so the widget needs direct overrides, not variables. */
+[data-amplify-authenticator] [data-amplify-container] {
+  place-self: start center !important;
+  width: 100% !important;
+  max-width: 25rem !important;
+  padding: 0 1.5rem 4rem !important;
+}
+
+/* Kill the card: no border, no shadow, no boxy background */
+[data-amplify-authenticator] [data-amplify-router] {
+  border: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+}
+
+/* Sign-up is administrator-provisioned, so the tab strip never applies */
+[data-amplify-authenticator] [data-amplify-router] [role='tablist'] {
+  display: none !important;
+}
+
+[data-amplify-authenticator] [data-amplify-form] {
+  padding: 0 !important;
+}
+
+/* Generous, even vertical rhythm between the fields and the action */
+[data-amplify-authenticator] [data-amplify-form],
+[data-amplify-authenticator] .amplify-authenticator__column {
+  gap: 1rem;
+}
+
+/* Fields: hairline, rounded, quiet placeholder, no label
+   (Amplify flattens the joined corners of grouped fields on its own) */
+[data-amplify-authenticator] .amplify-input {
+  height: 3rem;
+  border: 1px solid #e8e8e8;
+  border-radius: 0.75rem;
+  background-color: #ffffff;
+  font-size: 15px;
+  color: #1a1a1a;
+}
+
+[data-amplify-authenticator] .amplify-input::placeholder {
+  color: #969696;
+}
+
+/* The show / hide password control sits flush against the field */
+[data-amplify-authenticator]
+  .amplify-field-group__outer-end
+  .amplify-field-group__control {
+  height: 3rem;
+  border: 1px solid #e8e8e8;
+  border-radius: 0.75rem;
+  background-color: #ffffff;
+  color: #969696;
+}
+
+[data-amplify-authenticator] .amplify-input:focus,
+[data-amplify-authenticator] .amplify-field-group :focus {
+  border-color: #1c256c !important;
+  box-shadow: 0 0 0 1px #1c256c !important;
+  outline: none;
+}
+
+/* Primary action: full width, 48px, royal, radius 8 */
+[data-amplify-authenticator] .amplify-button--primary,
 .amplify-button--primary {
+  height: 3rem;
+  border-radius: 8px;
   background-color: #1c256c !important;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0;
 }
 .amplify-button--primary:hover,
 .amplify-button--primary:focus {
@@ -106,15 +166,31 @@ input[type='number'] {
 .amplify-button--primary:active {
   background-color: #10173f !important;
 }
-.amplify-button--link {
+
+/* "Forgot password?" reads as a quiet link, not a second button */
+[data-amplify-authenticator] .amplify-button--link {
+  width: auto;
+  margin: 0.25rem auto 0;
+  padding: 0.25rem 0.5rem;
+  font-size: 13px;
+  font-weight: 400;
+  color: #969696 !important;
+  background-color: transparent !important;
+}
+[data-amplify-authenticator] .amplify-button--link:hover {
   color: #1c256c !important;
+  background-color: transparent !important;
+  text-decoration: underline;
 }
-.amplify-button--link:hover {
-  color: #ff6600 !important;
-  background-color: #fff1e9 !important;
+
+[data-amplify-authenticator] .amplify-heading {
+  font-size: 17px;
+  font-weight: 600;
+  color: #1a1a1a;
 }
-.amplify-input:focus,
-.amplify-field-group :focus {
-  border-color: #1c256c !important;
-  box-shadow: 0 0 0 1px #1c256c !important;
+
+[data-amplify-authenticator] .amplify-text--error,
+[data-amplify-authenticator] .amplify-alert--error {
+  border-radius: 0.75rem;
+  font-size: 13px;
 }

@@ -129,8 +129,11 @@ agent_core:
   title: AgentCore
 agent_dashboard: {}
 auth:
+  email: Email
   loading: Loading...
   login: Login
+  password: Password
+  sign_in_to: Sign in to {{name}}
   title: Generative AI Use Cases on AWS
 chart:
   data_limit_exceeded: Chart data exceeds the display limit. Please reduce the number of data points (max 10,000) or series (max 50).
@@ -145,7 +148,8 @@ chart:
   zoom: Zoom chart
 chat:
   advanced_options: Advanced Options
-  answer_from_documents: Documents
+  cache_usage: 'cache {{write}} written · {{read}} read'
+  copy_answer: Copy
   create_link: Create Link
   create_link_message: >-
     By creating a link, you will share the conversation history with all users
@@ -155,12 +159,13 @@ chat:
   delete_confirmation: Delete Confirmation
   delete_link: Delete Link
   delete_link_message: You can stop sharing the conversation history by deleting the link.
-  drop_files: Drop files here
+  drop_files: Drop files to attach
   empty_greeting: How can I help you today?
-  empty_hint: Ask anything, or attach a file to get started.
-  empty_hint_documents: >-
-    Answers are grounded in your documents. Turn off Documents in the composer
-    to ask the model directly.
+  empty_hint: >-
+    Ask anything. Answers draw on your company documents, and you can attach
+    files or images to any message.
+  feedback_bad: Not helpful
+  feedback_good: Helpful
   hint_cmd_enter: ⌘ + Enter to Submit
   hint_ctrl_enter: Ctrl + Enter to Submit
   history: History
@@ -169,6 +174,7 @@ chat:
   open_link: Open Link
   prompt_examples: Prompt Examples
   recent: Recent
+  regenerate: Regenerate
   save: Save
   saved_system_prompts: Saved System Prompts
   search_by_title: Search by title
@@ -179,6 +185,7 @@ chat:
   show_system_prompt: Show system prompt
   system_prompt: System Prompt
   title: Chat
+  token_usage: '{{input}} tokens in · {{output}} tokens out'
   view_prompt_examples: View Prompt Examples
 common:
   add: Add
@@ -226,6 +233,8 @@ common:
   required: Required
   reviewComplete: Review completed
   save: Save
+  scroll_to_bottom: Scroll to bottom
+  scroll_to_top: Scroll to top
   selectUseCase: Select Use Case
   start_over: Start over
   submit: Submit
@@ -619,9 +628,10 @@ generateText:
 image:
   load_error: '[Image error: {{error}}]'
 inputs:
-  attachment: Attachment
-  reasoning: Extended thinking
-  setting: Setting
+  attachment: Attach files or images
+  reasoning: Thinking
+  reasoning_hint: Let the model think before answering
+  setting: Thinking effort
 landing:
   alert:
     description: >-

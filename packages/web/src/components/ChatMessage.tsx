@@ -10,10 +10,7 @@ import {
   PiChalkboardTeacher,
   PiFloppyDisk,
   PiArrowClockwise,
-  PiArrowUp,
-  PiArrowDown,
-  PiCloudArrowUp,
-  PiCloudArrowDown,
+  PiInfo,
   PiNotePencil,
   PiCheck,
   PiX,
@@ -21,6 +18,8 @@ import {
 import { BaseProps } from '../@types/common';
 import { ShownMessage, UpdateFeedbackRequest } from 'generative-ai-use-cases';
 import useBranding from '../hooks/useBranding';
+import { MODELS } from '../hooks/useModel';
+import Tooltip from './Tooltip';
 import useChat from '../hooks/useChat';
 import useTyping from '../hooks/useTyping';
 import FileCard from './FileCard';
@@ -94,6 +93,42 @@ const ChatMessage: React.FC<Props> = (props) => {
   const disabled = useMemo(() => {
     return isSendingFeedback || !props.chatContent?.id;
   }, [isSendingFeedback, props]);
+
+  // Model and token counts are engineering detail: they live in a tooltip
+  // behind a quiet info affordance instead of under every answer
+  const generationDetails = useMemo(() => {
+    if (chatContent?.role !== 'assistant') {
+      return '';
+    }
+
+    const details: string[] = [];
+
+    if (chatContent.llmType) {
+      details.push(MODELS.modelDisplayName(chatContent.llmType));
+    }
+
+    const usage = chatContent.metadata?.usage;
+
+    if (usage) {
+      details.push(
+        t('chat.token_usage', {
+          input: usage.inputTokens ?? 0,
+          output: usage.outputTokens ?? 0,
+        })
+      );
+
+      if (usage.cacheWriteInputTokens || usage.cacheReadInputTokens) {
+        details.push(
+          t('chat.cache_usage', {
+            write: usage.cacheWriteInputTokens ?? 0,
+            read: usage.cacheReadInputTokens ?? 0,
+          })
+        );
+      }
+    }
+
+    return details.join(' · ');
+  }, [chatContent, t]);
 
   const onSendFeedback = async (feedbackData: UpdateFeedbackRequest) => {
     if (!disabled) {
@@ -184,7 +219,7 @@ const ChatMessage: React.FC<Props> = (props) => {
   return (
     <div className="flex justify-center">
       <div
-        className={`${props.className ?? ''} w-full max-w-3xl px-4 py-3 text-[15px]`}>
+        className={`${props.className ?? ''} group/message w-full max-w-3xl px-4 py-3 text-[15px]`}>
         {chatContent?.role === 'user' && (
           <div className="flex flex-col items-end">
             {attachments}
@@ -198,11 +233,17 @@ const ChatMessage: React.FC<Props> = (props) => {
               </div>
             )}
             {props.editable && (
-              <div className="mt-1 flex items-center text-[#969696] print:hidden">
+              <div
+                className={`mt-1 flex items-center text-[#969696] transition-opacity print:hidden ${
+                  editing
+                    ? ''
+                    : 'md:opacity-0 md:focus-within:opacity-100 md:group-hover/message:opacity-100'
+                }`}>
                 {editing ? (
                   <>
                     <ButtonIcon
                       className="text-base"
+                      title={t('common.cancel')}
                       onClick={() => {
                         setEditing(false);
                       }}>
@@ -210,6 +251,7 @@ const ChatMessage: React.FC<Props> = (props) => {
                     </ButtonIcon>
                     <ButtonIcon
                       className="text-base"
+                      title={t('common.submit')}
                       onClick={() => {
                         if (props.onCommitEdit) {
                           setEditing(false);
@@ -222,6 +264,7 @@ const ChatMessage: React.FC<Props> = (props) => {
                 ) : (
                   <ButtonIcon
                     className="text-base"
+                    title={t('common.edit')}
                     onClick={() => {
                       setEditingPrompt(chatContent?.content ?? '');
                       setEditing(true);
@@ -300,11 +343,14 @@ const ChatMessage: React.FC<Props> = (props) => {
                 <div className="animate-pulse">▍</div>
               )}
 
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-[#969696] print:hidden">
+              {/* Quiet, hover-revealed actions: the answer is the content,
+                  these are the tools */}
+              <div className="mt-1 flex flex-wrap items-center text-[#969696] transition-opacity md:opacity-0 md:focus-within:opacity-100 md:group-hover/message:opacity-100 print:hidden">
                 {chatContent?.role === 'system' &&
                   !props.hideSaveSystemContext && (
                     <ButtonIcon
-                      className="text-base text-[#969696]"
+                      className="text-base text-[#969696] hover:text-[#5A5A5A]"
+                      title={t('chat.save')}
                       onClick={() => {
                         props.setSaveSystemContext?.(
                           chatContent?.content || ''
@@ -317,22 +363,23 @@ const ChatMessage: React.FC<Props> = (props) => {
                 {chatContent?.role === 'assistant' &&
                   !props.loading &&
                   !props.hideFeedback && (
-                    <div className="flex items-center text-[#969696]">
+                    <div className="flex items-center">
                       {props.allowRetry && (
                         <ButtonIcon
-                          className="mr-0.5 text-base"
+                          className="text-base hover:text-[#5A5A5A]"
+                          title={t('chat.regenerate')}
                           onClick={() => props.retryGeneration?.()}>
                           <PiArrowClockwise />
                         </ButtonIcon>
                       )}
                       <ButtonCopy
-                        className="mr-0.5 text-base"
+                        className="text-base hover:text-[#5A5A5A]"
+                        title={t('chat.copy_answer')}
                         text={chatContent?.content || ''}
                       />
                       {chatContent && (
                         <>
                           <ButtonFeedback
-                            className="mx-0.5"
                             feedback="good"
                             message={chatContent}
                             disabled={disabled}
@@ -341,7 +388,6 @@ const ChatMessage: React.FC<Props> = (props) => {
                             }}
                           />
                           <ButtonFeedback
-                            className="ml-0.5"
                             feedback="bad"
                             message={chatContent}
                             disabled={disabled}
@@ -351,31 +397,23 @@ const ChatMessage: React.FC<Props> = (props) => {
                       )}
                     </div>
                   )}
-                {chatContent?.role === 'assistant' && (
-                  <>
-                    <div>{chatContent?.llmType}</div>
-                    {chatContent?.metadata && (
-                      <div className="flex items-center gap-1">
-                        <PiArrowUp title="Input tokens" />
-                        {chatContent.metadata.usage.inputTokens}
-                        <PiArrowDown title="Output tokens" />
-                        {chatContent.metadata.usage.outputTokens}
-                        {chatContent.metadata.usage.cacheWriteInputTokens ? (
-                          <>
-                            <PiCloudArrowUp title="Cache write input tokens" />
-                            {chatContent.metadata.usage.cacheWriteInputTokens}
-                          </>
-                        ) : null}
-                        {chatContent.metadata.usage.cacheReadInputTokens ? (
-                          <>
-                            <PiCloudArrowDown title="Cache read input tokens" />
-                            {chatContent.metadata.usage.cacheReadInputTokens}
-                          </>
-                        ) : null}
-                      </div>
-                    )}
-                  </>
-                )}
+                {chatContent?.role === 'assistant' &&
+                  !props.loading &&
+                  generationDetails !== '' && (
+                    <Tooltip
+                      message={generationDetails}
+                      position="right"
+                      topPosition="-top-14"
+                      nowrap>
+                      <span
+                        tabIndex={0}
+                        role="note"
+                        aria-label={generationDetails}
+                        className="flex size-7 cursor-default items-center justify-center rounded-lg text-sm text-[#C6C6C6] hover:text-[#969696] focus:outline-none">
+                        <PiInfo />
+                      </span>
+                    </Tooltip>
+                  )}
               </div>
 
               {showFeedbackForm && (

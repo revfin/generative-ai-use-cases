@@ -8,6 +8,7 @@ import {
   PiThumbsDownFill,
 } from 'react-icons/pi';
 import { ShownMessage } from 'generative-ai-use-cases';
+import { useTranslation } from 'react-i18next';
 
 type Props = BaseProps & {
   message: ShownMessage;
@@ -17,38 +18,38 @@ type Props = BaseProps & {
 };
 
 const ButtonFeedback: React.FC<Props> = (props) => {
+  const { t } = useTranslation();
+
+  const active = useMemo(() => {
+    return props.message.feedback === props.feedback;
+  }, [props.message.feedback, props.feedback]);
+
+  // Feedback is an aside, not a verdict: muted until the user actually votes
   const color = useMemo(() => {
-    if (props.disabled) {
-      return 'text-gray-500';
+    if (!active) {
+      return 'text-[#969696] hover:text-[#5A5A5A]';
     }
 
-    if (props.feedback === 'good') {
-      return 'text-green-500';
-    } else {
-      return 'text-red-500';
-    }
-  }, [props]);
+    return props.feedback === 'good' ? 'text-aws-squid-ink' : 'text-[#B42318]';
+  }, [active, props.feedback]);
 
   const icon = useMemo(() => {
     if (props.feedback === 'good') {
-      if (props.message.feedback === 'good') {
-        return <PiThumbsUpFill />;
-      } else {
-        return <PiThumbsUp />;
-      }
-    } else {
-      if (props.message.feedback === 'bad') {
-        return <PiThumbsDownFill />;
-      } else {
-        return <PiThumbsDown />;
-      }
+      return active ? <PiThumbsUpFill /> : <PiThumbsUp />;
     }
-  }, [props]);
+
+    return active ? <PiThumbsDownFill /> : <PiThumbsDown />;
+  }, [active, props.feedback]);
 
   return (
     <ButtonIcon
-      className={`${props.className} ${color}`}
+      className={`${props.className ?? ''} text-base ${color}`}
       disabled={props.disabled}
+      title={
+        props.feedback === 'good'
+          ? t('chat.feedback_good')
+          : t('chat.feedback_bad')
+      }
       onClick={props.onClick}>
       {icon}
     </ButtonIcon>

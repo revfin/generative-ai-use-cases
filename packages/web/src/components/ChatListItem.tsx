@@ -13,6 +13,7 @@ import ButtonIcon from './ButtonIcon';
 import { Chat } from 'generative-ai-use-cases';
 import { decomposeId } from '../utils/ChatUtils';
 import DialogConfirmDeleteChat from './DialogConfirmDeleteChat';
+import { useTranslation } from 'react-i18next';
 
 type Props = BaseProps & {
   active: boolean;
@@ -26,6 +27,7 @@ type Props = BaseProps & {
 };
 
 const ChatListItem: React.FC<Props> = (props) => {
+  const { t } = useTranslation();
   const [openDialog, setOpenDialog] = useState(false);
   const [editing, setEditing] = useState(false);
   const chatId = useMemo(() => {
@@ -133,18 +135,26 @@ const ChatListItem: React.FC<Props> = (props) => {
               </div>
             )}
           </div>
-          <div className="flex text-[#969696]">
-            {props.active && !editing && (
+          {/* Rename / delete stay out of the way until the row is hovered */}
+          <div
+            className={`flex flex-none text-[#969696] transition-opacity ${
+              props.active || editing
+                ? ''
+                : 'opacity-0 focus-within:opacity-100 group-hover:opacity-100'
+            }`}>
+            {!editing && (
               <>
                 <ButtonIcon
-                  className="text-base"
+                  className="text-base hover:text-[#5A5A5A]"
+                  title={t('common.edit')}
                   onClick={() => {
                     setEditing(true);
                   }}>
                   <PiPencilLine />
                 </ButtonIcon>
                 <ButtonIcon
-                  className="text-base"
+                  className="text-base hover:text-[#5A5A5A]"
+                  title={t('common.delete')}
                   onClick={() => {
                     setOpenDialog(true);
                   }}>
@@ -154,12 +164,16 @@ const ChatListItem: React.FC<Props> = (props) => {
             )}
             {editing && (
               <>
-                <ButtonIcon className="text-base" onClick={updateTitle}>
+                <ButtonIcon
+                  className="text-base"
+                  title={t('common.save')}
+                  onClick={updateTitle}>
                   <PiCheck />
                 </ButtonIcon>
 
                 <ButtonIcon
                   className="text-base"
+                  title={t('common.cancel')}
                   onClick={() => {
                     setEditing(false);
                   }}>

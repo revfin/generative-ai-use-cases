@@ -5,7 +5,6 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as bedrock from 'aws-cdk-lib/aws-bedrock';
 import * as oss from 'aws-cdk-lib/aws-opensearchserverless';
 import * as s3 from 'aws-cdk-lib/aws-s3';
-import * as s3Deploy from 'aws-cdk-lib/aws-s3-deployment';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { ProcessedStackInput } from './stack-input';
 import { LAMBDA_RUNTIME_NODEJS, TAG_KEY } from '../consts';
@@ -639,14 +638,8 @@ export class RagKnowledgeBaseStack extends Stack {
     const defaultPolicy = knowledgeBaseRole.node.findChild('DefaultPolicy');
     knowledgeBase.node.addDependency(defaultPolicy);
 
-    new s3Deploy.BucketDeployment(this, 'DeployDocs', {
-      sources: [s3Deploy.Source.asset('./rag-docs')],
-      destinationBucket: dataSourceBucket,
-      // There is a possibility that access logs are still in the same Bucket from the previous configuration, so this setting is left.
-      exclude: ['AccessLogs/*', 'logs*'],
-      prune: false,
-      memoryLimit: 1024,
-    });
+    // Upstream seeds a sample Bedrock user guide PDF here; a real corpus does
+    // not want demo documents polluting retrieval, so the deployment is gone.
 
     this.knowledgeBaseId = knowledgeBase.ref;
     this.dataSourceBucketName = dataSourceBucket.bucketName;

@@ -1,6 +1,5 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import ButtonSend from './ButtonSend';
-import ButtonToggle from './ButtonToggle';
 import Textarea from './Textarea';
 import ZoomUpImage from './ZoomUpImage';
 import ZoomUpVideo from './ZoomUpVideo';
@@ -13,7 +12,7 @@ import {
   PiPaperclip,
   PiSpinnerGap,
   PiSlidersHorizontal,
-  PiClockCountdownLight,
+  PiLightbulbFilament,
 } from 'react-icons/pi';
 import useFiles from '../hooks/useFiles';
 import FileCard from './FileCard';
@@ -43,7 +42,8 @@ type Props = {
   reasoning?: boolean;
   onReasoningSwitched?: () => void;
   reasoningEnabled?: boolean;
-  // Quiet controls rendered next to the attachment button (model selector etc.)
+  // Quiet controls rendered in the trailing cluster, before the send button
+  // (the model selector lives here)
   toolbar?: React.ReactNode;
 } & (
   | {
@@ -71,6 +71,7 @@ const InputChatContent: React.FC<Props> = (props) => {
     uploading,
     errorMessages,
   } = useFiles(pathname);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // When the model is changed, etc., display the error message (do not automatically delete the file)
   useEffect(() => {
@@ -130,7 +131,7 @@ const InputChatContent: React.FC<Props> = (props) => {
         </p>
       )}
       <div
-        className={`focus-within:border-aws-squid-ink/30 relative flex flex-col rounded-2xl border border-[#E8E8E8] bg-white transition-colors ${
+        className={`focus-within:border-aws-squid-ink/30 relative flex flex-col rounded-2xl border border-[#E8E8E8] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-colors ${
           props.disableMarginBottom
             ? ''
             : settingSubmitCmdOrCtrlEnter
@@ -139,7 +140,7 @@ const InputChatContent: React.FC<Props> = (props) => {
         }`}>
         <div className="flex grow flex-col">
           {props.fileUpload && uploadedFiles.length > 0 && (
-            <div className="flex flex-wrap gap-2 p-2">
+            <div className="flex flex-wrap gap-2 px-3 pt-3">
               {uploadedFiles.map((uploadedFile, idx) => {
                 if (uploadedFile.type === 'image') {
                   return (
@@ -188,9 +189,9 @@ const InputChatContent: React.FC<Props> = (props) => {
             </div>
           )}
           {errorMessages.length > 0 && (
-            <div className="m-2 flex flex-wrap gap-2">
+            <div className="flex flex-col gap-1 px-4 pt-3">
               {errorMessages.map((errorMessage, idx) => (
-                <p key={idx} className="text-red-500">
+                <p key={idx} className="text-[13px] text-red-600">
                   {errorMessage}
                 </p>
               ))}
@@ -207,52 +208,67 @@ const InputChatContent: React.FC<Props> = (props) => {
             onEnter={disabledSend ? undefined : props.onSend}
           />
         </div>
-        <div className="m-2 flex items-center justify-between gap-1">
+        <div className="flex items-center justify-between gap-2 px-2 pb-2 pt-1">
           <div className="flex min-w-0 items-center gap-x-1">
             {props.fileUpload && (
               <Tooltip
                 message={t('inputs.attachment')}
-                position="center"
+                position="right"
                 topPosition="-top-16"
                 nowrap>
-                <div className="">
-                  <label>
-                    <input
-                      hidden
-                      onChange={onChangeFiles}
-                      type="file"
-                      accept={props.accept?.join(',')}
-                      multiple
-                      value={[]}
-                    />
-                    <div
-                      className={`${uploading ? 'text-[#969696]' : 'cursor-pointer hover:bg-[#F7F7F7]'} ${uploadedFiles.length > 0 ? 'text-aws-smile' : 'text-[#969696]'} flex size-8 items-center justify-center rounded-lg align-bottom text-lg`}>
-                      {uploading ? (
-                        <PiSpinnerGap className="animate-spin" />
-                      ) : (
-                        <PiPaperclip />
-                      )}
-                    </div>
-                  </label>
-                </div>
-              </Tooltip>
-            )}
-            {props.toolbar}
-            {props.reasoning && (
-              <Tooltip
-                message={t('inputs.reasoning')}
-                position="center"
-                topPosition="-top-16"
-                nowrap>
-                <ButtonToggle
-                  onSwitch={props.onReasoningSwitched ?? (() => {})}
-                  icon={<PiClockCountdownLight />}
-                  isEnabled={!!props.reasoningEnabled}
+                <input
+                  ref={fileInputRef}
+                  hidden
+                  onChange={onChangeFiles}
+                  type="file"
+                  accept={props.accept?.join(',')}
+                  multiple
+                  value={[]}
                 />
+                <button
+                  type="button"
+                  aria-label={t('inputs.attachment')}
+                  disabled={uploading}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`focus-visible:ring-aws-squid-ink flex size-8 items-center justify-center rounded-lg text-lg transition-colors focus:outline-none focus-visible:ring-1 ${
+                    uploading
+                      ? 'text-[#C6C6C6]'
+                      : uploadedFiles.length > 0
+                        ? 'text-aws-squid-ink hover:bg-[#F7F7F7]'
+                        : 'text-[#969696] hover:bg-[#F7F7F7] hover:text-[#5A5A5A]'
+                  }`}>
+                  {uploading ? (
+                    <PiSpinnerGap className="animate-spin" />
+                  ) : (
+                    <PiPaperclip />
+                  )}
+                </button>
               </Tooltip>
             )}
           </div>
-          <div className="flex items-center gap-x-2">
+          <div className="flex min-w-0 items-center gap-x-1">
+            {props.reasoning && (
+              <Tooltip
+                message={t('inputs.reasoning_hint')}
+                position="center"
+                topPosition="-top-16"
+                nowrap>
+                <button
+                  type="button"
+                  aria-pressed={!!props.reasoningEnabled}
+                  onClick={props.onReasoningSwitched ?? (() => {})}
+                  className={`focus-visible:ring-aws-squid-ink flex h-8 items-center gap-1.5 rounded-lg px-2 text-[13px] transition-colors focus:outline-none focus-visible:ring-1 ${
+                    props.reasoningEnabled
+                      ? 'text-aws-squid-ink bg-[#1C256C]/[0.07]'
+                      : 'text-[#5A5A5A] hover:bg-[#F7F7F7]'
+                  }`}>
+                  <PiLightbulbFilament className="text-base" />
+                  <span className="hidden sm:inline">
+                    {t('inputs.reasoning')}
+                  </span>
+                </button>
+              </Tooltip>
+            )}
             {props.setting && (
               <Tooltip
                 message={t('inputs.setting')}
@@ -261,13 +277,14 @@ const InputChatContent: React.FC<Props> = (props) => {
                 nowrap>
                 <ButtonIcon
                   onClick={props.onSetting ?? (() => {})}
-                  className="text-lg text-[#969696]">
+                  className="size-8 text-base text-[#969696] hover:text-[#5A5A5A]">
                   <PiSlidersHorizontal />
                 </ButtonIcon>
               </Tooltip>
             )}
+            {props.toolbar}
             <ButtonSend
-              className=""
+              className="ml-1"
               disabled={disabledSend}
               loading={loading || uploading}
               onClick={props.onSend}

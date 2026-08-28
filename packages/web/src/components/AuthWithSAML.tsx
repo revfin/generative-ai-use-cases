@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Text, Loader, useAuthenticator } from '@aws-amplify/ui-react';
+import { useAuthenticator } from '@aws-amplify/ui-react';
 import { Amplify } from 'aws-amplify';
 import '@aws-amplify/ui-react/styles.css';
 import { signInWithRedirect } from 'aws-amplify/auth';
 import { useTranslation } from 'react-i18next';
+import useBranding from '../hooks/useBranding';
 
 const samlCognitoDomainName: string = import.meta.env
   .VITE_APP_SAML_COGNITO_DOMAIN_NAME;
@@ -18,6 +19,7 @@ type Props = {
 
 const AuthWithSAML: React.FC<Props> = (props) => {
   const { t } = useTranslation();
+  const { title: brandingTitle, logoPath } = useBranding();
   const { authStatus } = useAuthenticator((context) => [context.authStatus]);
 
   const [authenticated, setAuthenticated] = useState(false);
@@ -75,19 +77,35 @@ const AuthWithSAML: React.FC<Props> = (props) => {
   return (
     <>
       {loading ? (
-        <div className="grid grid-cols-1 justify-items-center gap-4">
-          <Text className="mt-12 text-center">{t('auth.loading')}</Text>
-          <Loader width="5rem" height="5rem" />
+        <div className="flex min-h-screen flex-col items-center justify-center gap-4">
+          {logoPath ? (
+            <img
+              src={logoPath}
+              alt=""
+              className="size-12 animate-pulse rounded-xl"
+            />
+          ) : null}
+          <span className="text-[13px] text-[#969696]">
+            {t('auth.loading')}
+          </span>
         </div>
       ) : !authenticated ? (
-        <div className="grid grid-cols-1 justify-items-center gap-4">
-          <Text className="mt-12 text-center text-3xl">{t('auth.title')}</Text>
-          <Button
-            variation="primary"
-            onClick={() => signIn()}
-            className="mt-6 w-60">
+        <div className="mx-auto flex min-h-screen w-full max-w-sm flex-col items-center px-6 pt-32">
+          {logoPath ? (
+            <img src={logoPath} alt="" className="size-12 rounded-xl" />
+          ) : (
+            <div className="bg-aws-smile size-12 rounded-xl" />
+          )}
+          <h1 className="text-aws-font-color mt-5 text-[21px] font-semibold">
+            {t('auth.sign_in_to', {
+              name: brandingTitle || t('auth.title'),
+            })}
+          </h1>
+          <button
+            className="bg-aws-squid-ink hover:bg-aws-anchor focus-visible:ring-aws-squid-ink mt-8 h-12 w-full rounded-lg text-[15px] font-semibold text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+            onClick={() => signIn()}>
             {t('auth.login')}
-          </Button>
+          </button>
         </div>
       ) : (
         <>{props.children}</>

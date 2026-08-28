@@ -10,6 +10,7 @@ type Props = BaseProps & {
   html?: string;
   interUseCasesKey?: string;
   disabled?: boolean;
+  title?: string;
 };
 
 const ButtonCopy: React.FC<Props> = (props) => {
@@ -44,6 +45,7 @@ const ButtonCopy: React.FC<Props> = (props) => {
     <ButtonIcon
       className={`${props.className ?? ''}`}
       disabled={props.disabled}
+      title={props.title}
       onClick={() => {
         copyMessage(props.text, props.html);
       }}>
