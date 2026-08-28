@@ -27,3 +27,16 @@ input[type='number'] {
     -webkit-print-color-adjust: exact;
   }
 }
+
+/* Revfin theme for the Amplify authenticator (branding: Mimir) */
+[data-amplify-theme] {
+  --amplify-components-button-primary-background-color: #1c256c;
+  --amplify-components-button-primary-hover-background-color: #161e56;
+  --amplify-components-button-primary-focus-background-color: #161e56;
+  --amplify-components-button-primary-active-background-color: #10173f;
+  --amplify-components-button-link-color: #1c256c;
+  --amplify-components-button-link-hover-color: #ff6600;
+  --amplify-components-fieldcontrol-focus-border-color: #1c256c;
+  --amplify-components-tabs-item-active-color: #1c256c;
+  --amplify-components-tabs-item-active-border-color: #ff6600;
+}

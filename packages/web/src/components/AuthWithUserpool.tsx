@@ -3,6 +3,7 @@ import { Authenticator, translations } from '@aws-amplify/ui-react';
 import { I18n } from 'aws-amplify/utils';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import useBranding from '../hooks/useBranding';
 
 const selfSignUpEnabled: boolean =
   import.meta.env.VITE_APP_SELF_SIGN_UP_ENABLED === 'true';
@@ -14,6 +15,7 @@ type Props = {
 };
 const AuthWithUserpool: React.FC<Props> = (props) => {
   const { t, i18n } = useTranslation();
+  const { title: brandingTitle, logoPath } = useBranding();
 
   Amplify.configure({
     Auth: {
@@ -40,8 +42,11 @@ const AuthWithUserpool: React.FC<Props> = (props) => {
       hideSignUp={!selfSignUpEnabled}
       components={{
         Header: () => (
-          <div className="text-aws-font-color mb-5 mt-10 flex justify-center text-3xl">
-            {t('auth.title')}
+          <div className="text-aws-font-color mb-5 mt-10 flex items-center justify-center gap-3 text-3xl font-semibold">
+            {logoPath ? (
+              <img src={logoPath} alt="" className="size-9 rounded-lg" />
+            ) : null}
+            {brandingTitle || t('auth.title')}
           </div>
         ),
       }}>

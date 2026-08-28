@@ -11,7 +11,7 @@ export default {
       },
     },
     fontFamily: {
-      body: ['"Noto Sans JP"', 'Sarabun'],
+      body: ['Poppins', '"Noto Sans JP"', 'Sarabun'],
     },
     extend: {
       transitionProperty: {
@@ -19,13 +19,13 @@ export default {
         height: 'height',
       },
       colors: {
-        'aws-squid-ink': '#232F3E',
-        'aws-anchor': '#003181',
-        'aws-sky': '#2074d5',
-        'aws-rind': '#FBD8BF',
-        'aws-smile': '#ff9900',
-        'aws-font-color': '#232F3E',
-        'aws-ml': '#01A88D',
+        'aws-squid-ink': '#1C256C',
+        'aws-anchor': '#161E56',
+        'aws-sky': '#1C256C',
+        'aws-rind': '#FFF1E9',
+        'aws-smile': '#FF6600',
+        'aws-font-color': '#1A1A1A',
+        'aws-ml': '#E06000',
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
