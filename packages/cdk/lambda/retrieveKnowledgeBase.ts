@@ -30,7 +30,8 @@ export const handler = async (
     retrievalConfiguration: {
       vectorSearchConfiguration: {
         numberOfResults: 10,
-        overrideSearchType: 'HYBRID',
+        // No overrideSearchType: S3 Vectors indexes reject HYBRID (an
+        // OpenSearch feature); the service picks the backend's native type.
       },
     },
   });
