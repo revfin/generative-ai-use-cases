@@ -239,6 +239,8 @@ export class GenerativeAiUseCasesStack extends Stack {
       useCaseBuilderTable: useCaseBuilder?.useCaseBuilderTable,
       useCaseIdIndexName: useCaseBuilder?.useCaseIdIndexName,
       agentBuilderRuntimeArn,
+      // Mimir agent (AgentCore Runtime) — null keeps the feature off
+      agentRuntimeArn: params.agentRuntimeArn,
       // Transcribe
       audioBucket: transcribe.audioBucket,
       transcriptBucket: transcribe.transcriptBucket,
@@ -338,6 +340,7 @@ export class GenerativeAiUseCasesStack extends Stack {
       // Backend
       apiEndpointUrl: api.api.url,
       predictStreamFunctionArn: api.predictStreamFunction.functionArn,
+      agentRuntimeFunctionArn: api.mimirAgentFunction?.functionArn,
       ragEnabled: params.ragEnabled,
       ragKnowledgeBaseEnabled: params.ragKnowledgeBaseEnabled,
       ragKnowledgeBaseStorageType: params.ragKnowledgeBaseStorageType,
@@ -455,6 +458,12 @@ export class GenerativeAiUseCasesStack extends Stack {
     new CfnOutput(this, 'PredictStreamFunctionArn', {
       value: api.predictStreamFunction.functionArn,
     });
+
+    if (api.mimirAgentFunction) {
+      new CfnOutput(this, 'MimirAgentFunctionArn', {
+        value: api.mimirAgentFunction.functionArn,
+      });
+    }
 
     new CfnOutput(this, 'OptimizePromptFunctionArn', {
       value: api.optimizePromptFunction.functionArn,

@@ -30,6 +30,8 @@ export interface WebProps {
   readonly userPoolClientId: string;
   readonly idPoolId: string;
   readonly predictStreamFunctionArn: string;
+  /** InvokeMimirAgent function ARN; absent = the agent send path is off */
+  readonly agentRuntimeFunctionArn?: string;
   readonly ragEnabled: boolean;
   readonly ragKnowledgeBaseEnabled: boolean;
   readonly ragKnowledgeBaseStorageType: string;
@@ -267,6 +269,10 @@ export class Web extends Construct {
         VITE_APP_USER_POOL_CLIENT_ID: props.userPoolClientId,
         VITE_APP_IDENTITY_POOL_ID: props.idPoolId,
         VITE_APP_PREDICT_STREAM_FUNCTION_ARN: props.predictStreamFunctionArn,
+        VITE_APP_AGENT_RUNTIME_ENABLED:
+          (!!props.agentRuntimeFunctionArn).toString(),
+        VITE_APP_AGENT_RUNTIME_FUNCTION_ARN:
+          props.agentRuntimeFunctionArn ?? '',
         VITE_APP_RAG_ENABLED: props.ragEnabled.toString(),
         VITE_APP_RAG_KNOWLEDGE_BASE_ENABLED:
           props.ragKnowledgeBaseEnabled.toString(),

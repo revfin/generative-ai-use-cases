@@ -30,6 +30,16 @@ import useFileApi from './useFileApi';
 
 type GenerationMode = 'normal' | 'continue' | 'retry' | 'edit';
 
+/**
+ * A drop-in replacement for `predictStream`.
+ *
+ * The Mimir agent answers over a different protocol but the same NDJSON
+ * `StreamingChunk` frames, so swapping the stream is all it takes to reuse
+ * this store wholesale: history recording, retry, edit, the stop button and
+ * the error toasts are identical on both paths.
+ */
+export type StreamFactory = () => AsyncIterable<Uint8Array>;
+
 const useChatState = create<{
   chats: {
     [id: string]: {
@@ -73,7 +83,8 @@ const useChatState = create<{
     overrideModelType: Model['type'] | undefined,
     setSessionId: (sessionId: string) => void,
     base64Cache: Record<string, string> | undefined,
-    overrideModelParameters: AdditionalModelRequestFields | undefined
+    overrideModelParameters: AdditionalModelRequestFields | undefined,
+    overrideStream: StreamFactory | undefined
   ) => Promise<boolean | undefined>;
   edit: (
     id: string,
@@ -88,7 +99,8 @@ const useChatState = create<{
     overrideModelType: Model['type'] | undefined,
     setSessionId: (sessionId: string) => void,
     base64Cache: Record<string, string> | undefined,
-    overrideModelParameters: AdditionalModelRequestFields | undefined
+    overrideModelParameters: AdditionalModelRequestFields | undefined,
+    overrideStream: StreamFactory | undefined
   ) => void;
   continueGeneration: (
     generationMode: GenerationMode,
@@ -103,7 +115,8 @@ const useChatState = create<{
     overrideModelType: Model['type'] | undefined,
     setSessionId: (sessionId: string) => void,
     base64Cache: Record<string, string> | undefined,
-    overrideModelParameters: AdditionalModelRequestFields | undefined
+    overrideModelParameters: AdditionalModelRequestFields | undefined,
+    overrideStream: StreamFactory | undefined
   ) => void;
   retryGeneration: (
     generationMode: GenerationMode,
@@ -118,7 +131,8 @@ const useChatState = create<{
     overrideModelType: Model['type'] | undefined,
     setSessionId: (sessionId: string) => void,
     base64Cache: Record<string, string> | undefined,
-    overrideModelParameters: AdditionalModelRequestFields | undefined
+    overrideModelParameters: AdditionalModelRequestFields | undefined,
+    overrideStream: StreamFactory | undefined
   ) => void;
   sendFeedback: (
     id: string,
@@ -513,7 +527,8 @@ const useChatState = create<{
     base64Cache: Record<string, string> | undefined = undefined,
     overrideModelParameters:
       | AdditionalModelRequestFields
-      | undefined = undefined
+      | undefined = undefined,
+    overrideStream: StreamFactory | undefined = undefined
   ) => {
     const modelId = get().modelIds[id];
 
@@ -615,14 +630,19 @@ const useChatState = create<{
         base64Cache
       );
 
-      const stream = predictStream(
-        {
-          model: model,
-          messages: formattedMessages,
-          id: id,
-        },
-        false
-      );
+      // The agent path hands in its own stream; everything downstream - the
+      // chunk decoding, the history recording, the retry and edit bookkeeping
+      // - is shared, because the frames are the same on both wires.
+      const stream = overrideStream
+        ? overrideStream()
+        : predictStream(
+            {
+              model: model,
+              messages: formattedMessages,
+              id: id,
+            },
+            false
+          );
 
       const splitByNewlineBinary = (data: Uint8Array): Uint8Array[] => {
         const newline = 0x0a; // '\n'
@@ -933,7 +953,8 @@ const useChatState = create<{
       base64Cache: Record<string, string> | undefined = undefined,
       overrideModelParameters:
         | AdditionalModelRequestFields
-        | undefined = undefined
+        | undefined = undefined,
+      overrideStream: StreamFactory | undefined = undefined
     ) => {
       const unrecordedUserMessage: UnrecordedMessage = {
         role: 'user',
@@ -986,7 +1007,8 @@ const useChatState = create<{
         overrideModelType,
         setSessionId,
         base64Cache,
-        overrideModelParameters
+        overrideModelParameters,
+        overrideStream
       );
     },
 
@@ -1007,7 +1029,8 @@ const useChatState = create<{
       base64Cache: Record<string, string> | undefined = undefined,
       overrideModelParameters:
         | AdditionalModelRequestFields
-        | undefined = undefined
+        | undefined = undefined,
+      overrideStream: StreamFactory | undefined = undefined
     ) => {
       set((state) => {
         const newChats = produce(state.chats, (draft) => {
@@ -1050,7 +1073,8 @@ const useChatState = create<{
         overrideModelType,
         setSessionId,
         base64Cache,
-        overrideModelParameters
+        overrideModelParameters,
+        overrideStream
       );
     },
 
@@ -1190,7 +1214,8 @@ const useChat = (id: string, chatId?: string) => {
       base64Cache: Record<string, string> | undefined = undefined,
       overrideModelParameters:
         | AdditionalModelRequestFields
-        | undefined = undefined
+        | undefined = undefined,
+      overrideStream: StreamFactory | undefined = undefined
     ) => {
       return post(
         id,
@@ -1205,7 +1230,8 @@ const useChat = (id: string, chatId?: string) => {
         overrideModelType,
         setSessionId,
         base64Cache,
-        overrideModelParameters
+        overrideModelParameters,
+        overrideStream
       );
     },
     editChat: (
@@ -1223,7 +1249,8 @@ const useChat = (id: string, chatId?: string) => {
       base64Cache: Record<string, string> | undefined = undefined,
       overrideModelParameters:
         | AdditionalModelRequestFields
-        | undefined = undefined
+        | undefined = undefined,
+      overrideStream: StreamFactory | undefined = undefined
     ) => {
       edit(
         id,
@@ -1238,7 +1265,8 @@ const useChat = (id: string, chatId?: string) => {
         overrideModelType,
         setSessionId,
         base64Cache,
-        overrideModelParameters
+        overrideModelParameters,
+        overrideStream
       );
     },
     continueGeneration: (
@@ -1255,7 +1283,8 @@ const useChat = (id: string, chatId?: string) => {
       base64Cache: Record<string, string> | undefined = undefined,
       overrideModelParameters:
         | AdditionalModelRequestFields
-        | undefined = undefined
+        | undefined = undefined,
+      overrideStream: StreamFactory | undefined = undefined
     ) => {
       continueGeneration(
         'continue',
@@ -1270,7 +1299,8 @@ const useChat = (id: string, chatId?: string) => {
         overrideModelType,
         setSessionId,
         base64Cache,
-        overrideModelParameters
+        overrideModelParameters,
+        overrideStream
       );
     },
     retryGeneration: (
@@ -1287,7 +1317,8 @@ const useChat = (id: string, chatId?: string) => {
       base64Cache: Record<string, string> | undefined = undefined,
       overrideModelParameters:
         | AdditionalModelRequestFields
-        | undefined = undefined
+        | undefined = undefined,
+      overrideStream: StreamFactory | undefined = undefined
     ) => {
       retryGeneration(
         'retry',
@@ -1302,7 +1333,8 @@ const useChat = (id: string, chatId?: string) => {
         overrideModelType,
         setSessionId,
         base64Cache,
-        overrideModelParameters
+        overrideModelParameters,
+        overrideStream
       );
     },
     sendFeedback: async (feedbackData: UpdateFeedbackRequest) => {

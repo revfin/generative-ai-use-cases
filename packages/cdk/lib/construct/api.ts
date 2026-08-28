@@ -75,6 +75,8 @@ export interface BackendApiProps {
   readonly useCaseBuilderTable?: Table;
   readonly useCaseIdIndexName?: string;
   readonly agentBuilderRuntimeArn?: string;
+  // Mimir agent on AgentCore Runtime (null / absent = feature off)
+  readonly agentRuntimeArn?: string | null;
   // Transcribe
   readonly audioBucket?: Bucket;
   readonly transcriptBucket?: Bucket;
@@ -92,6 +94,7 @@ export interface BackendApiProps {
 export class Api extends Construct {
   readonly api: RestApi;
   readonly predictStreamFunction: NodejsFunction;
+  readonly mimirAgentFunction?: NodejsFunction;
   readonly invokeFlowFunction: NodejsFunction;
   readonly optimizePromptFunction: NodejsFunction;
   readonly apiHandler: NodejsFunction;
@@ -388,6 +391,41 @@ export class Api extends Construct {
     });
     fileBucket.grantReadWrite(predictStreamFunction);
     predictStreamFunction.grantInvoke(idPool.authenticatedRole);
+
+    // Mimir agent (Bedrock AgentCore Runtime), wired exactly like
+    // PredictStream: the browser signs a direct invocation with identity-pool
+    // credentials, and the function verifies the caller's ID token before it
+    // derives an actor id. Absent `agentRuntimeArn` nothing is created and the
+    // chat keeps its client-side retrieval path.
+    let mimirAgentFunction: NodejsFunction | undefined;
+
+    if (props.agentRuntimeArn) {
+      mimirAgentFunction = new NodejsFunction(this, 'InvokeMimirAgent', {
+        runtime: LAMBDA_RUNTIME_NODEJS,
+        bundling: {
+          nodeModules: ['@aws-sdk/client-bedrock-agentcore'],
+        },
+        entry: './lambda/invokeMimirAgent.ts',
+        timeout: Duration.minutes(15),
+        memorySize: 256,
+        environment: {
+          USER_POOL_ID: userPool.userPoolId,
+          USER_POOL_CLIENT_ID: userPoolClient.userPoolClientId,
+          AGENT_RUNTIME_ARN: props.agentRuntimeArn,
+        },
+        vpc,
+        securityGroups,
+      });
+      mimirAgentFunction.role?.addToPrincipalPolicy(
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: ['bedrock-agentcore:InvokeAgentRuntime'],
+          // The runtime ARN plus its qualifiers (`.../runtime/<id>/...`)
+          resources: [props.agentRuntimeArn, `${props.agentRuntimeArn}/*`],
+        })
+      );
+      mimirAgentFunction.grantInvoke(idPool.authenticatedRole);
+    }
 
     const invokeFlowFunction = new NodejsFunction(this, 'InvokeFlow', {
       runtime: LAMBDA_RUNTIME_NODEJS,
@@ -783,6 +821,7 @@ export class Api extends Construct {
 
     this.api = api;
     this.predictStreamFunction = predictStreamFunction;
+    this.mimirAgentFunction = mimirAgentFunction;
     this.invokeFlowFunction = invokeFlowFunction;
     this.optimizePromptFunction = optimizePromptFunction;
     this.modelRegion = modelRegion;

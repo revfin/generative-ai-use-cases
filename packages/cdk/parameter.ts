@@ -135,6 +135,15 @@ const envs: Record<string, Partial<StackInput>> = {
     // agentCoreVpcId: 'vpc-0ea26d5059b5b9349',
     // agentCoreSubnetIds: ['subnet-xxxxxxxx', 'subnet-yyyyyyyy'],
 
+    // Mimir's own Strands runtime, deployed out of band (services/agent,
+    // decisions #10-#12). Setting this ARN creates the InvokeMimirAgent
+    // Lambda and flips the chat's send path over to the agent; unset (null)
+    // the chat keeps the client-side retrieve-then-inject path. This is NOT
+    // agentCoreExternalRuntimes above - that key only adds a runtime to
+    // GenU's own AgentCore chat page, which is not the Mimir chat.
+    agentRuntimeArn:
+      'arn:aws:bedrock-agentcore:ap-south-1:211125585828:runtime/mimir_agent_dev-cJz7rOEu4i',
+
     // ---------------------------------------------------------------------
     // MCP chat use case — deprecated upstream (scheduled removal in v6) and
     // superseded by AgentCore Gateway in our design (#10, Phase 3). Leave

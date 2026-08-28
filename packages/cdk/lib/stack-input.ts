@@ -172,6 +172,10 @@ const baseStackInputSchema = z.object({
   // Agent Core Network Configuration
   agentCoreVpcId: z.string().nullish(),
   agentCoreSubnetIds: z.array(z.string()).nullish(),
+  // Mimir agent on AgentCore Runtime. The chat's send path is cut over to this
+  // runtime when the ARN is set; null (the default) leaves the client-side
+  // retrieve-then-inject path in place, so the feature is off by default.
+  agentRuntimeArn: z.string().nullish(),
   // Research Agent Core Runtime
   researchAgentEnabled: z.boolean().default(false),
   createResearchAgentFargate: z.boolean().default(false),

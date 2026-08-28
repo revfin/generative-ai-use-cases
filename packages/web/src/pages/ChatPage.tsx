@@ -26,12 +26,21 @@ import { getPrompter } from '../prompts';
 import queryString from 'query-string';
 import useFiles from '../hooks/useFiles';
 import useDocumentGrounding from '../hooks/useDocumentGrounding';
+import useMimirAgentApi, {
+  agentRuntimeEnabled,
+} from '../hooks/useMimirAgentApi';
 import {
   GroundingSource,
   appendSourceFootnotes,
   buildGroundedSystemContext,
   stripSourceFootnotes,
 } from '../utils/grounding';
+import {
+  AgentSource,
+  agentSessionId,
+  finalizeAgentAnswer,
+} from '../utils/agentStream';
+import { v4 as uuid } from 'uuid';
 import {
   AdditionalModelRequestFields,
   FileLimit,
@@ -80,6 +89,8 @@ const useChatPageState = create<StateType>((set) => {
 
 const DEFAULT_REASONING_BUDGET = 4096; // Claude 3.7 Sonnet recommended minimum value
 
+const modelRegion: string = import.meta.env.VITE_APP_MODEL_REGION ?? '';
+
 const ChatPage: React.FC = () => {
   const { content, setContent } = useChatPageState();
   const { pathname, search, state } = useLocation();
@@ -114,6 +125,7 @@ const ChatPage: React.FC = () => {
   } = useChat(pathname, chatId);
   const { createShareId, findShareId, deleteShareId } = useChatApi();
   const { documentGroundingEnabled, retrieveSources } = useDocumentGrounding();
+  const { agentStream } = useMimirAgentApi();
   const { scrollableContainer, setFollowing } = useFollow();
   const { getChatTitle } = useChatList();
   const { modelDisplayName } = MODELS;
@@ -162,11 +174,17 @@ const ChatPage: React.FC = () => {
       ...(feature.flags.video ? fileLimit.accept.video : []),
     ];
   }, [modelId]);
+  // The agent's request contract has no attachment field in this slice, so
+  // the paperclip is hidden rather than left as a control that silently
+  // drops files.
   const fileUpload = useMemo(() => {
-    return accept.length > 0;
+    return !agentRuntimeEnabled && accept.length > 0;
   }, [accept]);
   const reasoning = useMemo(() => {
-    return MODELS.getModelMetadata(modelId).flags.reasoning ?? false;
+    return (
+      !agentRuntimeEnabled &&
+      (MODELS.getModelMetadata(modelId).flags.reasoning ?? false)
+    );
   }, [modelId]);
   const adaptiveThinking = useMemo(() => {
     return MODELS.getModelMetadata(modelId).flags.adaptiveThinking ?? false;
@@ -292,6 +310,46 @@ const ChatPage: React.FC = () => {
 
   const previewOpen = useDocumentPreview((state) => state.doc !== null);
 
+  // ---------------------------------------------------------------------
+  // Agent path. When the stack was deployed with a Mimir agent runtime the
+  // whole retrieve-then-inject dance below is the agent's job instead: the
+  // browser sends one prompt and reads back tool activity, answer deltas and
+  // a source list. Everything after the stream - history, retry, edit, the
+  // stop button, the citation pills - runs through the same code as before.
+
+  // One runtime session per conversation. Derived from the chat id so it
+  // survives a reload; a chat that does not exist yet gets a mount-scoped id.
+  const newChatSeed = useRef<string>(uuid());
+  const sessionId = useMemo(
+    () => agentSessionId(chatId ?? newChatSeed.current),
+    [chatId]
+  );
+
+  // The sources of the turn in flight. They arrive in the terminal frame,
+  // after the footnote closure was handed to the chat store, so the closure
+  // reads them from here.
+  const agentSources = useRef<AgentSource[]>([]);
+
+  const buildAgentStream = useCallback(
+    (prompt: string) => {
+      agentSources.current = [];
+
+      return agentStream(prompt, sessionId, {
+        onTurnEvent,
+        onSources: (sources) => {
+          agentSources.current = sources;
+        },
+      });
+    },
+    [agentStream, sessionId, onTurnEvent]
+  );
+
+  const appendAgentFootnotes = useCallback(
+    (message: string) =>
+      finalizeAgentAnswer(message, agentSources.current, modelRegion),
+    []
+  );
+
   // Retrieve first, inject the passages into the system context, then let the
   // normal streaming chat answer. Attachments, history and reasoning are
   // untouched by this - the documents are just context.
@@ -354,6 +412,30 @@ const ChatPage: React.FC = () => {
     const previousQuestion = lastQuestion;
     setContent('');
     clearFiles();
+
+    if (agentRuntimeEnabled) {
+      const answered = await postChat(
+        savedContent,
+        false,
+        undefined,
+        appendAgentFootnotes,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        base64Cache,
+        overrideModelParameters,
+        buildAgentStream(savedContent)
+      );
+
+      if (!answered) {
+        setContent(savedContent);
+      }
+
+      return;
+    }
+
     const sources = await groundTurn(savedContent, previousQuestion, true);
     const success = await postChat(
       prompter.chatPrompt({ content: savedContent }),
@@ -381,10 +463,31 @@ const ChatPage: React.FC = () => {
     setFollowing,
     overrideModelParameters,
     uploadedFiles,
+    appendAgentFootnotes,
+    buildAgentStream,
   ]);
 
   const onRetry = useCallback(async () => {
     onTurnEvent({ type: 'turn-start' });
+
+    if (agentRuntimeEnabled) {
+      retryGeneration(
+        false,
+        undefined,
+        appendAgentFootnotes,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        base64Cache,
+        overrideModelParameters,
+        buildAgentStream(lastQuestion ?? '')
+      );
+
+      return;
+    }
+
     // The question has not changed, but re-grounding keeps citations correct
     // even after the conversation was restored from history
     const sources = lastQuestion
@@ -409,6 +512,8 @@ const ChatPage: React.FC = () => {
     lastQuestion,
     overrideModelParameters,
     onTurnEvent,
+    appendAgentFootnotes,
+    buildAgentStream,
   ]);
 
   const onStop = useCallback(() => {
@@ -419,6 +524,26 @@ const ChatPage: React.FC = () => {
     async (modifiedPrompt: string) => {
       setFollowing(true);
       onTurnEvent({ type: 'turn-start' });
+
+      if (agentRuntimeEnabled) {
+        editChat(
+          modifiedPrompt,
+          false,
+          undefined,
+          appendAgentFootnotes,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          base64Cache,
+          overrideModelParameters,
+          buildAgentStream(modifiedPrompt)
+        );
+
+        return;
+      }
+
       const sources = await groundTurn(modifiedPrompt, undefined, false);
       editChat(
         modifiedPrompt,
@@ -441,6 +566,8 @@ const ChatPage: React.FC = () => {
       setFollowing,
       overrideModelParameters,
       onTurnEvent,
+      appendAgentFootnotes,
+      buildAgentStream,
     ]
   );
 

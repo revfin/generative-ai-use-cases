@@ -83,7 +83,8 @@ export const convertS3UriToUrl = (s3Uri: string, region: string): string => {
   return `https://s3.${region}.amazonaws.com/${groups.bucketName}/${groups.prefix}`;
 };
 
-const fileNameOf = (uri: string): string => {
+/** The display name of a document, from its URI. */
+export const fileNameOf = (uri: string): string => {
   const last = uri.split('/').pop() ?? '';
 
   try {
