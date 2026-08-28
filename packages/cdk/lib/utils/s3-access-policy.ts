@@ -4,7 +4,13 @@ const createSourceIpCondition = (
   allowedIpV4AddressRanges?: string[] | null,
   allowedIpV6AddressRanges?: string[] | null
 ) =>
-  allowedIpV4AddressRanges || allowedIpV6AddressRanges
+  // Empty arrays are truthy: guarding on the arrays themselves emitted
+  // IpAddress: { aws:SourceIp: [] } - a condition that never matches, which
+  // turned the ALLOW statement into a no-op and broke every KB document
+  // download on deployments without IP restrictions.
+  (allowedIpV4AddressRanges?.length ?? 0) +
+    (allowedIpV6AddressRanges?.length ?? 0) >
+  0
     ? {
         IpAddress: {
           'aws:SourceIp': [
