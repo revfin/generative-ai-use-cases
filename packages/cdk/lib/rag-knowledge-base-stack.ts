@@ -414,7 +414,7 @@ export class RagKnowledgeBaseStack extends Stack {
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         resources: ['*'],
-        actions: ['bedrock:InvokeModel'],
+        actions: ['bedrock:InvokeModel', 'bedrock:GetInferenceProfile'],
       })
     );
 
@@ -525,7 +525,14 @@ export class RagKnowledgeBaseStack extends Stack {
               parsingConfiguration: {
                 parsingStrategy: 'BEDROCK_FOUNDATION_MODEL',
                 bedrockFoundationModelConfiguration: {
-                  modelArn: `arn:aws:bedrock:${this.region}::foundation-model/${ragKnowledgeBaseAdvancedParsingModelId}`,
+                  // Cross-region inference profile IDs (global./us./eu./apac./jp./au./in.)
+                  // are inference-profile ARNs, not foundation-model ARNs. Mumbai has no
+                  // in-region Anthropic models, so parsing must go through a profile.
+                  modelArn: /^(global|us|eu|apac|jp|au|in)\./.test(
+                    ragKnowledgeBaseAdvancedParsingModelId
+                  )
+                    ? `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/${ragKnowledgeBaseAdvancedParsingModelId}`
+                    : `arn:aws:bedrock:${this.region}::foundation-model/${ragKnowledgeBaseAdvancedParsingModelId}`,
                   parsingPrompt: {
                     parsingPromptText: PARSING_PROMPT,
                   },
