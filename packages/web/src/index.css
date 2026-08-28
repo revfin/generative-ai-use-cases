@@ -40,3 +40,28 @@ input[type='number'] {
   --amplify-components-tabs-item-active-color: #1c256c;
   --amplify-components-tabs-item-active-border-color: #ff6600;
 }
+
+/* Amplify ships its theme vars on the same selector later in the cascade,
+   so the widget needs direct overrides, not variables. */
+.amplify-button--primary {
+  background-color: #1c256c !important;
+}
+.amplify-button--primary:hover,
+.amplify-button--primary:focus {
+  background-color: #161e56 !important;
+}
+.amplify-button--primary:active {
+  background-color: #10173f !important;
+}
+.amplify-button--link {
+  color: #1c256c !important;
+}
+.amplify-button--link:hover {
+  color: #ff6600 !important;
+  background-color: #fff1e9 !important;
+}
+.amplify-input:focus,
+.amplify-field-group :focus {
+  border-color: #1c256c !important;
+  box-shadow: 0 0 0 1px #1c256c !important;
+}
