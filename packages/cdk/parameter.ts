@@ -87,7 +87,16 @@ const envs: Record<string, Partial<StackInput>> = {
     ragKnowledgeBaseStorageType: 's3vectors', // pay-per-use, no fixed fee (#5)
     ragKnowledgeBaseId: null, // let GenU create the KB
     ragKnowledgeBaseStandbyReplicas: false, // n/a for s3vectors backend; keep false regardless (single-AZ, lowest cost)
-    ragKnowledgeBaseAdvancedParsing: false, // costs extra Claude calls per ingested doc — leave off until needed
+    // FM parsing ON from day one (Avinash, 2026-08-28): lending corpora are
+    // scan-heavy (signed/stamped agreements) and rate tables are the product —
+    // the default text-layer parser returns nothing for scans and flattens
+    // tables. Haiku 4.5 as parser = per-page token cost (~fractions of a cent),
+    // one-time per document version. BDA-as-KB-parser is us-west-2 preview
+    // only — not an option in ap-south-1. Parsing page images transit global
+    // inference (same compliance scope as chat).
+    ragKnowledgeBaseAdvancedParsing: true,
+    ragKnowledgeBaseAdvancedParsingModelId:
+      'global.anthropic.claude-haiku-4-5-20251001-v1:0',
     embeddingModelId: 'amazon.titan-embed-text-v2:0', // Titan Text Embeddings V2, IN-REGION ap-south-1 (no global.* prefix — embeddings are invoked directly in modelRegion, not via cross-region inference profile)
     rerankingModelId: null,
     queryDecompositionEnabled: false,
