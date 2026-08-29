@@ -9,6 +9,7 @@ interface ImportMetaEnv {
   readonly VITE_APP_PREDICT_STREAM_FUNCTION_ARN: string;
   readonly VITE_APP_AGENT_RUNTIME_ENABLED: string;
   readonly VITE_APP_AGENT_RUNTIME_FUNCTION_ARN: string;
+  readonly VITE_APP_MIMIR_MEMORY_ENABLED: string;
   readonly VITE_APP_RAG_ENABLED: string;
   readonly VITE_APP_RAG_KNOWLEDGE_BASE_ENABLED: string;
   readonly VITE_APP_AGENT_ENABLED: string;

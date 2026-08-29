@@ -176,6 +176,14 @@ const baseStackInputSchema = z.object({
   // runtime when the ARN is set; null (the default) leaves the client-side
   // retrieve-then-inject path in place, so the feature is off by default.
   agentRuntimeArn: z.string().nullish(),
+  // AgentCore Memory backing the Mimir agent's long-term memory. Setting
+  // this id creates the MimirMemory Lambda and the /mimir-memory routes, so
+  // signed-in users can see and delete what the agent remembers about them;
+  // null (the default) leaves the memory manager off.
+  agentCoreMemoryId: z.string().nullish(),
+  // Whether the stack owns the custom:tenant_id schema attribute on the user pool. True for
+  // pools born from this stack (prod); false where the attribute predates stack management (dev).
+  mimirTenantAttribute: z.boolean().default(true),
   // Research Agent Core Runtime
   researchAgentEnabled: z.boolean().default(false),
   createResearchAgentFargate: z.boolean().default(false),

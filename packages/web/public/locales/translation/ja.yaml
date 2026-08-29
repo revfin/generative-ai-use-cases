@@ -775,6 +775,20 @@ meetingMinutes:
   translation_type: 翻訳方式
   unidirectional: 片方向翻訳
   view_prompt: ▶ プロンプトを表示
+memory:
+  delete_confirmation: このメモリーを削除しますか?
+  delete_failed: このメモリーを削除できませんでした。もう一度お試しください。
+  description: Mimir が会話を通じてあなたについて記憶している内容です。ここで削除しても会話履歴は削除されません。
+  empty: Mimir はまだあなたについて何も記憶していません。
+  facts: 事実
+  forget_all_button: すべて忘れる
+  forget_all_confirmation: Mimir が記憶しているあなたの好みや事実がすべて完全に削除されます。会話履歴には影響しません。この操作は取り消せません。
+  forget_all_failed: メモリーを削除できませんでした。もう一度お試しください。
+  forget_all_success_other: '{{count}} 件のメモリーを削除しました。'
+  load_failed: メモリーを読み込めませんでした。もう一度お試しください。
+  other: その他
+  preferences: 好み
+  title: メモリー
 model:
   parameters:
     reasoning_budget: 深く考えるトークン数上限

@@ -1,5 +1,7 @@
 import { Duration } from 'aws-cdk-lib';
 import {
+  LambdaVersion,
+  StringAttribute,
   UserPool,
   UserPoolClient,
   UserPoolOperation,
@@ -19,6 +21,10 @@ export interface AuthProps {
   readonly allowedIpV6AddressRanges?: string[] | null;
   readonly allowedSignUpEmailDomains?: string[] | null;
   readonly samlAuthEnabled: boolean;
+  // Whether this stack owns the custom:tenant_id schema attribute on the pool. Prod pools are
+  // born with it; the dev pool predates the stack managing it (the attribute was added directly,
+  // and Cognito attributes cannot be re-added), so dev sets this false.
+  readonly mimirTenantAttribute?: boolean;
 }
 
 export class Auth extends Construct {
@@ -44,6 +50,17 @@ export class Auth extends Construct {
         requireDigits: true,
         minLength: 8,
       },
+      ...(props.mimirTenantAttribute !== false
+        ? {
+            customAttributes: {
+              tenant_id: new StringAttribute({
+                mutable: true,
+                minLen: 1,
+                maxLen: 64,
+              }),
+            },
+          }
+        : {}),
     });
 
     const client = userPool.addClient('client', {
@@ -123,6 +140,24 @@ export class Auth extends Construct {
         checkEmailDomainFunction
       );
     }
+
+    // The Mimir governance API authorizes with access tokens; Cognito only puts custom
+    // attributes in ID tokens by itself, so copy the signed tenant claim over at issue time.
+    const injectTenantClaimFunction = new NodejsFunction(
+      this,
+      'InjectTenantClaim',
+      {
+        runtime: LAMBDA_RUNTIME_NODEJS,
+        entry: './lambda/injectTenantClaim.ts',
+        timeout: Duration.seconds(5),
+      }
+    );
+
+    userPool.addTrigger(
+      UserPoolOperation.PRE_TOKEN_GENERATION_CONFIG,
+      injectTenantClaimFunction,
+      LambdaVersion.V2_0
+    );
 
     this.client = client;
     this.userPool = userPool;

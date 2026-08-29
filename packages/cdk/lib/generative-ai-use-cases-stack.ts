@@ -160,6 +160,7 @@ export class GenerativeAiUseCasesStack extends Stack {
       allowedIpV4AddressRanges: params.allowedIpV4AddressRanges,
       allowedIpV6AddressRanges: params.allowedIpV6AddressRanges,
       allowedSignUpEmailDomains: params.allowedSignUpEmailDomains,
+      mimirTenantAttribute: params.mimirTenantAttribute,
       samlAuthEnabled: params.samlAuthEnabled,
     });
 
@@ -241,6 +242,8 @@ export class GenerativeAiUseCasesStack extends Stack {
       agentBuilderRuntimeArn,
       // Mimir agent (AgentCore Runtime) — null keeps the feature off
       agentRuntimeArn: params.agentRuntimeArn,
+      // Mimir memory manager (AgentCore Memory) — null keeps the feature off
+      agentCoreMemoryId: params.agentCoreMemoryId,
       // Transcribe
       audioBucket: transcribe.audioBucket,
       transcriptBucket: transcribe.transcriptBucket,
@@ -341,6 +344,7 @@ export class GenerativeAiUseCasesStack extends Stack {
       apiEndpointUrl: api.api.url,
       predictStreamFunctionArn: api.predictStreamFunction.functionArn,
       agentRuntimeFunctionArn: api.mimirAgentFunction?.functionArn,
+      mimirMemoryEnabled: !!api.mimirMemoryFunction,
       ragEnabled: params.ragEnabled,
       ragKnowledgeBaseEnabled: params.ragKnowledgeBaseEnabled,
       ragKnowledgeBaseStorageType: params.ragKnowledgeBaseStorageType,
@@ -462,6 +466,12 @@ export class GenerativeAiUseCasesStack extends Stack {
     if (api.mimirAgentFunction) {
       new CfnOutput(this, 'MimirAgentFunctionArn', {
         value: api.mimirAgentFunction.functionArn,
+      });
+    }
+
+    if (api.mimirMemoryFunction) {
+      new CfnOutput(this, 'MimirMemoryFunctionArn', {
+        value: api.mimirMemoryFunction.functionArn,
       });
     }
 

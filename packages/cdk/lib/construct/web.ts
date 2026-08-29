@@ -32,6 +32,8 @@ export interface WebProps {
   readonly predictStreamFunctionArn: string;
   /** InvokeMimirAgent function ARN; absent = the agent send path is off */
   readonly agentRuntimeFunctionArn?: string;
+  /** Whether the MimirMemory Lambda + /mimir-memory routes were deployed */
+  readonly mimirMemoryEnabled?: boolean;
   readonly ragEnabled: boolean;
   readonly ragKnowledgeBaseEnabled: boolean;
   readonly ragKnowledgeBaseStorageType: string;
@@ -273,6 +275,7 @@ export class Web extends Construct {
           (!!props.agentRuntimeFunctionArn).toString(),
         VITE_APP_AGENT_RUNTIME_FUNCTION_ARN:
           props.agentRuntimeFunctionArn ?? '',
+        VITE_APP_MIMIR_MEMORY_ENABLED: (!!props.mimirMemoryEnabled).toString(),
         VITE_APP_RAG_ENABLED: props.ragEnabled.toString(),
         VITE_APP_RAG_KNOWLEDGE_BASE_ENABLED:
           props.ragKnowledgeBaseEnabled.toString(),

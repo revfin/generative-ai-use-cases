@@ -11,11 +11,14 @@ import { useTranslation } from 'react-i18next';
 import { supportedLngs } from '../i18n/config';
 import useChatList from '../hooks/useChatList';
 import DialogConfirmDeleteAllChats from '../components/DialogConfirmDeleteAllChats';
+import MimirMemoryPanel from '../components/MimirMemoryPanel';
 
 const ragKnowledgeBaseEnabled: boolean =
   import.meta.env.VITE_APP_RAG_KNOWLEDGE_BASE_ENABLED === 'true';
 const ragKnowledgeBaseStorageType: string =
   import.meta.env.VITE_APP_RAG_KNOWLEDGE_BASE_STORAGE_TYPE || 'opensearch';
+const mimirMemoryEnabled: boolean =
+  import.meta.env.VITE_APP_MIMIR_MEMORY_ENABLED === 'true';
 
 const SettingItem = (props: {
   name: string;
@@ -142,6 +145,8 @@ const Setting = () => {
             <Button onClick={onClickSignout}>{t('setting.signout')}</Button>
           }></SettingItem>
       </div>
+
+      {mimirMemoryEnabled && <MimirMemoryPanel />}
 
       <div className="mb-4 mt-10 text-lg font-semibold">
         {t('setting.system')}

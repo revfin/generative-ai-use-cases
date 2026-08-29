@@ -77,6 +77,8 @@ export interface BackendApiProps {
   readonly agentBuilderRuntimeArn?: string;
   // Mimir agent on AgentCore Runtime (null / absent = feature off)
   readonly agentRuntimeArn?: string | null;
+  // Mimir memory manager (AgentCore Memory) — null / absent = feature off
+  readonly agentCoreMemoryId?: string | null;
   // Transcribe
   readonly audioBucket?: Bucket;
   readonly transcriptBucket?: Bucket;
@@ -95,6 +97,7 @@ export class Api extends Construct {
   readonly api: RestApi;
   readonly predictStreamFunction: NodejsFunction;
   readonly mimirAgentFunction?: NodejsFunction;
+  readonly mimirMemoryFunction?: NodejsFunction;
   readonly invokeFlowFunction: NodejsFunction;
   readonly optimizePromptFunction: NodejsFunction;
   readonly apiHandler: NodejsFunction;
@@ -425,6 +428,47 @@ export class Api extends Construct {
         })
       );
       mimirAgentFunction.grantInvoke(idPool.authenticatedRole);
+    }
+
+    // Mimir memory manager (AgentCore Memory) — unlike its neighbors above,
+    // this one goes THROUGH API Gateway (see the routes below), because it is
+    // plain authed CRUD with no need for response streaming. Its own least-
+    // privilege IAM policy — scoped to this one memory resource — is the
+    // reason it is a dedicated function rather than a route on the shared
+    // apiHandler, whose role is not scoped per-route. Absent
+    // `agentCoreMemoryId` nothing is created and no /mimir-memory routes
+    // exist.
+    let mimirMemoryFunction: NodejsFunction | undefined;
+
+    if (props.agentCoreMemoryId) {
+      mimirMemoryFunction = new NodejsFunction(this, 'MimirMemory', {
+        runtime: LAMBDA_RUNTIME_NODEJS,
+        bundling: {
+          nodeModules: ['@aws-sdk/client-bedrock-agentcore'],
+        },
+        entry: './lambda/mimirMemory.ts',
+        timeout: Duration.seconds(30),
+        memorySize: 256,
+        environment: {
+          MEMORY_ID: props.agentCoreMemoryId,
+        },
+        vpc,
+        securityGroups,
+      });
+
+      const memoryArn = `arn:aws:bedrock-agentcore:${Stack.of(this).region}:${Stack.of(this).account}:memory/${props.agentCoreMemoryId}`;
+      mimirMemoryFunction.role?.addToPrincipalPolicy(
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: [
+            'bedrock-agentcore:ListMemoryRecords',
+            'bedrock-agentcore:RetrieveMemoryRecords',
+            'bedrock-agentcore:GetMemoryRecord',
+            'bedrock-agentcore:DeleteMemoryRecord',
+          ],
+          resources: [memoryArn, `${memoryArn}/*`],
+        })
+      );
     }
 
     const invokeFlowFunction = new NodejsFunction(this, 'InvokeFlow', {
@@ -807,6 +851,21 @@ export class Api extends Construct {
     // --- Routes from SpeechToSpeech Construct (v5) ---
     api.root.addResource('speech-to-speech').addMethod('POST');
 
+    // --- Mimir memory manager ---
+    // A dedicated integration (not the default apiHandler one) so this
+    // route runs under the narrowly-scoped mimirMemoryFunction role instead
+    // of the shared monolith role. It still inherits the RestApi's default
+    // Cognito authorizer, exactly like every route above.
+    if (mimirMemoryFunction) {
+      const mimirMemoryIntegration = new LambdaIntegration(mimirMemoryFunction);
+      const mimirMemory = api.root.addResource('mimir-memory');
+      mimirMemory.addMethod('GET', mimirMemoryIntegration);
+      mimirMemory.addMethod('DELETE', mimirMemoryIntegration);
+      mimirMemory
+        .addResource('{recordId}')
+        .addMethod('DELETE', mimirMemoryIntegration);
+    }
+
     // Catch-all for any new routes added in the monolith
     api.root.addProxy({
       defaultIntegration: lambdaIntegration,
@@ -822,6 +881,7 @@ export class Api extends Construct {
     this.api = api;
     this.predictStreamFunction = predictStreamFunction;
     this.mimirAgentFunction = mimirAgentFunction;
+    this.mimirMemoryFunction = mimirMemoryFunction;
     this.invokeFlowFunction = invokeFlowFunction;
     this.optimizePromptFunction = optimizePromptFunction;
     this.modelRegion = modelRegion;

@@ -526,6 +526,20 @@ meetingMinutes:
   transcript: 转录文本
   transcription_panel: 转录文本
   view_prompt: ▶ 查看提示词
+memory:
+  delete_confirmation: 删除这条记忆？
+  delete_failed: 无法删除这条记忆，请重试。
+  description: Mimir 通过对话记住的关于你的内容。在此处删除不会删除任何对话历史。
+  empty: Mimir 尚未记住任何关于你的信息。
+  facts: 事实
+  forget_all_button: 忘记全部
+  forget_all_confirmation: 此操作将永久删除 Mimir 记住的关于你的所有内容——包括偏好和事实。不会影响对话历史。此操作无法撤销。
+  forget_all_failed: 无法忘记你的记忆，请重试。
+  forget_all_success_other: '已忘记 {{count}} 条记忆。'
+  load_failed: 无法加载你的记忆，请重试。
+  other: 其他
+  preferences: 偏好
+  title: 记忆
 model:
   parameters:
     reasoning_budget: 推理预算

@@ -622,6 +622,20 @@ meetingMinutes:
   transcript: Bản chuyển đổi
   transcription_panel: Phiên âm
   view_prompt: ▶ Xem prompt
+memory:
+  delete_confirmation: Xóa bộ nhớ này?
+  delete_failed: Không thể xóa bộ nhớ này. Vui lòng thử lại.
+  description: Những gì Mimir ghi nhớ về bạn qua các cuộc trò chuyện. Xóa tại đây không xóa lịch sử trò chuyện.
+  empty: Mimir chưa ghi nhớ điều gì về bạn.
+  facts: Sự kiện
+  forget_all_button: Quên tất cả
+  forget_all_confirmation: Thao tác này sẽ xóa vĩnh viễn mọi thứ Mimir ghi nhớ về bạn — sở thích và sự kiện. Lịch sử trò chuyện không bị ảnh hưởng. Không thể hoàn tác thao tác này.
+  forget_all_failed: Không thể xóa bộ nhớ của bạn. Vui lòng thử lại.
+  forget_all_success_other: 'Đã quên {{count}} bộ nhớ.'
+  load_failed: Không thể tải bộ nhớ. Vui lòng thử lại.
+  other: Khác
+  preferences: Sở thích
+  title: Bộ nhớ
 model:
   parameters:
     reasoning_budget: Token budget for extended thinking

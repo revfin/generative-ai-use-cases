@@ -144,6 +144,14 @@ const envs: Record<string, Partial<StackInput>> = {
     agentRuntimeArn:
       'arn:aws:bedrock-agentcore:ap-south-1:211125585828:runtime/mimir_agent_dev-cJz7rOEu4i',
 
+    // The AgentCore Memory resource behind that runtime. Setting this id
+    // creates the MimirMemory Lambda and the /mimir-memory routes, giving
+    // signed-in users their own "what Mimir remembers about me" panel.
+    agentCoreMemoryId: 'mimir_agent_dev_memory-4DG20X23s8',
+    // The dev pool got custom:tenant_id before the stack managed it; Cognito
+    // cannot re-add an attribute, so dev opts out of schema ownership.
+    mimirTenantAttribute: false,
+
     // ---------------------------------------------------------------------
     // MCP chat use case — deprecated upstream (scheduled removal in v6) and
     // superseded by AgentCore Gateway in our design (#10, Phase 3). Leave

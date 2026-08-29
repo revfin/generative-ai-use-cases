@@ -638,6 +638,20 @@ meetingMinutes:
   transcript: บันทึกการถอดความ
   transcription_panel: ถอดความ
   view_prompt: ▶ ดูพรอมต์
+memory:
+  delete_confirmation: ลบความทรงจำนี้หรือไม่?
+  delete_failed: ไม่สามารถลบความทรงจำนี้ได้ กรุณาลองใหม่อีกครั้ง
+  description: สิ่งที่ Mimir จดจำเกี่ยวกับคุณจากบทสนทนา การลบที่นี่จะไม่ลบประวัติการสนทนา
+  empty: Mimir ยังไม่ได้จดจำอะไรเกี่ยวกับคุณ
+  facts: ข้อเท็จจริง
+  forget_all_button: ลืมทั้งหมด
+  forget_all_confirmation: การดำเนินการนี้จะลบทุกสิ่งที่ Mimir จดจำเกี่ยวกับคุณอย่างถาวร ทั้งความชอบและข้อเท็จจริง ประวัติการสนทนาจะไม่ได้รับผลกระทบ ไม่สามารถย้อนกลับการดำเนินการนี้ได้
+  forget_all_failed: ไม่สามารถลบความทรงจำของคุณได้ กรุณาลองใหม่อีกครั้ง
+  forget_all_success_other: 'ลืมความทรงจำ {{count}} รายการแล้ว'
+  load_failed: ไม่สามารถโหลดความทรงจำได้ กรุณาลองใหม่อีกครั้ง
+  other: อื่นๆ
+  preferences: ความชอบ
+  title: หน่วยความจำ
 model:
   parameters:
     reasoning_budget: งบประมาณการให้เหตุผล

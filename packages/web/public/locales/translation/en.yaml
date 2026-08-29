@@ -948,6 +948,21 @@ meetingMinutes:
   translation_type: Translation Type
   unidirectional: Unidirectional Translation
   view_prompt: ▶ View prompt
+memory:
+  delete_confirmation: Delete this memory?
+  delete_failed: Couldn't delete that memory. Please try again.
+  description: What Mimir remembers about you across conversations. Deleting a memory here does not delete any conversation history.
+  empty: Mimir hasn't remembered anything about you yet.
+  facts: Facts
+  forget_all_button: Forget everything
+  forget_all_confirmation: This permanently deletes everything Mimir remembers about you — your preferences and facts. Conversation history is not affected. This action cannot be undone.
+  forget_all_failed: Couldn't forget your memories. Please try again.
+  forget_all_success_one: 'Forgot {{count}} memory.'
+  forget_all_success_other: 'Forgot {{count}} memories.'
+  load_failed: Couldn't load your memories. Please try again.
+  other: Other
+  preferences: Preferences
+  title: Memory
 model:
   parameters:
     reasoning_budget: Token budget for extended thinking
