@@ -1,3 +1,5 @@
+> **This repository is archived.** The app plane moved into [revfin/mimir](https://github.com/revfin/mimir) at `platform/` on 2026-08-31 (decision #24) — same stacks, same logical IDs, one repo. This fork remains as the pre-absorption history record.
+
 <div markdown="1" align="center">
   <h1>Generative AI Use Cases (GenU)</h1>
 
